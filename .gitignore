@@ -7,6 +7,9 @@
 # .NET build kimenetek
 bin/
 obj/
+Api/obj/
+Domain/obj
+Infrastructure/obj
 
 # EF Core migrációk (ha verziózni akarod, akkor kommenteld ki)
 # Migrations/
