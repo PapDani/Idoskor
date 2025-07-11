@@ -1,0 +1,20 @@
+# VS cache és felhasználói beállítások
+.vs/
+**/.vs/
+*.user
+*.suo
+
+# .NET build kimenetek
+bin/
+obj/
+
+# EF Core migrációk (ha verziózni akarod, akkor kommenteld ki)
+# Migrations/
+
+# Angular / Node
+ClientApp/node_modules/
+ClientApp/dist/
+ClientApp/.angular/
+
+# Lokális környezetek
+**/appsettings.Development.json
