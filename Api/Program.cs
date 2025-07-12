@@ -2,8 +2,11 @@ using Domain.Interfaces;
 using Infrastructure;
 using Infrastructure.Repositories;
 using Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,7 +33,27 @@ builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod()));
 
 // 6. Authentication / Authorization
-builder.Services.AddAuthentication(/* JWT beállítások */);
+//JWT beállítások betöltése
+var jwtSection = builder.Configuration.GetSection("Jwt");
+var key = Encoding.UTF8.GetBytes(jwtSection["Key"]!);
+
+// 7.) Authentication/Authorization regisztráció
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtSection["Issuer"],
+            ValidateAudience = true,
+            ValidAudience = jwtSection["Audience"],
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateLifetime = true
+        };
+    });
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();

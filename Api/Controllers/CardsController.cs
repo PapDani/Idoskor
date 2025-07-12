@@ -41,7 +41,7 @@ namespace Api.Controllers
         /// <summary>
         /// Creates a new card.
         /// </summary>
-        [Authorize]  // only authenticated admins can create
+        [Authorize(Roles = "Admin")]  // only authenticated admins can create
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] Card card)
         {
@@ -52,7 +52,7 @@ namespace Api.Controllers
         /// <summary>
         /// Updates an existing card.
         /// </summary>
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] Card card)
         {
@@ -65,7 +65,7 @@ namespace Api.Controllers
         /// <summary>
         /// Deletes a card by its Id.
         /// </summary>
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
