@@ -1,0 +1,10 @@
+<div *ngIf="card as c" class="max-w-xl mx-auto p-4">
+  <button (click)="goBack()" class="mb-4 px-3 py-1 bg-gray-200 rounded">
+    Go Back
+  </button>
+  <img [src]="c.imageUrl" alt="{{ c.title }}" />
+  <h1 class="mt-4 text-2xl font-bold">{{ c.title }}</h1>
+  <p class="mt-2">
+    Content: <a [href]="c.contentUrl" target="_blank">{{ c.contentUrl }}</a>
+  </p>
+</div>

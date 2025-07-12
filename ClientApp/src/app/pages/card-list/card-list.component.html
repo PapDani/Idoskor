@@ -1,0 +1,6 @@
+<div class="grid grid-cols-3 gap-4 p-4">
+  <div *ngFor="let c of cards" class="cursor-pointer" (click)="goDetail(c.id)">
+    <img [src]="c.imageUrl" alt="{{ c.title }}" class="rounded shadow w-full h-48 object-cover" />
+    <h2 class="mt-2 font-medium">{{ c.title }}</h2>
+  </div>
+</div>
