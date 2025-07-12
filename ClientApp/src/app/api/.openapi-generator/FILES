@@ -1,0 +1,17 @@
+.gitignore
+.openapi-generator-ignore
+README.md
+api.base.service.ts
+api.module.ts
+api/api.ts
+api/cards.service.ts
+api/test.service.ts
+configuration.ts
+encoder.ts
+git_push.sh
+index.ts
+model/card.ts
+model/models.ts
+param.ts
+provide-api.ts
+variables.ts
