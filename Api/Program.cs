@@ -1,6 +1,7 @@
 using Domain.Interfaces;
 using Infrastructure;
 using Infrastructure.Repositories;
+using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -12,7 +13,7 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 
 // 2. Repository és Service (ha van Service layer)
 builder.Services.AddScoped<ICardRepository, CardRepository>();
-// builder.Services.AddScoped<ICardService, CardService>();
+builder.Services.AddScoped<ICardService, CardService>();
 
 // 3. Controller szolgáltatás
 builder.Services.AddControllers();
