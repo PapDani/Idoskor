@@ -18,4 +18,9 @@
     <ProjectReference Include="..\Domain\Domain.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<!-- this brings in IWebHostEnvironment, IFormFile, StaticFiles, etc. -->
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
 </Project>

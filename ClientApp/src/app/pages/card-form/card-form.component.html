@@ -9,8 +9,8 @@
       Title is required.
     </div>
 
-    <label>Image URL</label>
-    <input formControlName="imageUrl" class="w-full mb-2 p-2 border" />
+    <label>Image</label>
+    <input type="file" (change)="onFileSelected($event)" class="w-full mb-2 p-2 border" />
     <div *ngIf="form.controls['imageUrl'].invalid && form.controls['imageUrl'].touched" class="text-red-600">
       Must be a valid URL (http/https).
     </div>

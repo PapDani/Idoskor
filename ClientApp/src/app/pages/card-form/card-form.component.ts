@@ -3,7 +3,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CardService } from '../../services/card.service';
-import { Card } from '../../api';
 
 @Component({
   selector: 'app-card-form',
@@ -16,6 +15,8 @@ export class CardFormComponent implements OnInit {
   form!: FormGroup;
   isEdit = false;
   cardId?: number;
+    fileControl!: HTMLInputElement;
+    http: any;
 
   constructor(
     private fb: FormBuilder,
@@ -44,15 +45,18 @@ export class CardFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.form.invalid) return;
-
-    const card: Card = this.form.value as Card;
-    if (this.isEdit && this.cardId != null) {
-      this.service.updateCard(this.cardId, card)
-        .subscribe(() => this.router.navigate(['/cards']));
-    } else {
-      this.service.createCard(card)
-        .subscribe(() => this.router.navigate(['/cards']));
+    const fd = new FormData();
+    fd.append('title', this.form.value.title);
+    fd.append('contentUrl', this.form.value.contentUrl);
+    if (this.fileControl.files?.length) {
+      fd.append('imageFile', this.fileControl.files[0]);
     }
+
+    const obs = this.isEdit
+      ? this.http.put(`/api/Cards/${this.cardId}`, fd)
+      : this.http.post(`/api/Cards`, fd);
+
+    obs.subscribe(() => this.router.navigate(['/cards']));
   }
 
   onDelete(): void {
@@ -60,5 +64,9 @@ export class CardFormComponent implements OnInit {
       this.service.deleteCard(this.cardId)
         .subscribe(() => this.router.navigate(['/cards']));
     }
+  }
+
+  onFileSelected(evt: Event) {
+    this.fileControl = evt.target as HTMLInputElement;
   }
 }

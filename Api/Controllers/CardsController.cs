@@ -3,76 +3,50 @@ using Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Api.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class CardsController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class CardsController : ControllerBase
+    private readonly ICardService _cards;
+    public CardsController(ICardService cards) => _cards = cards;
+
+    [HttpGet]
+    public Task<IReadOnlyList<Card>> GetAll() => _cards.ListAsync();
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
     {
-        private readonly ICardService _service;
+        var card = await _cards.GetByIdAsync(id);
+        if (card == null) return NotFound();
+        return Ok(card);
+    }
 
-        public CardsController(ICardService service)
-        {
-            _service = service;
-        }
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromForm] IFormFile imageFile,
+                                            [FromForm] string title,
+                                            [FromForm] string contentUrl)
+    {
+        var card = await _cards.CreateAsync(title, contentUrl, imageFile);
+        return CreatedAtAction(nameof(GetById), new { id = card.Id }, card);
+    }
 
-        /// <summary>
-        /// Retrieves all cards.
-        /// </summary>
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            var cards = await _service.GetAllAsync();
-            return Ok(cards);
-        }
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(int id,
+                                            [FromForm] IFormFile? imageFile,
+                                            [FromForm] string title,
+                                            [FromForm] string contentUrl)
+    {
+        await _cards.UpdateAsync(id, title, contentUrl, imageFile);
+        return NoContent();
+    }
 
-        /// <summary>
-        /// Retrieves a single card by its Id.
-        /// </summary>
-        [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var card = await _service.GetByIdAsync(id);
-            if (card is null)
-                return NotFound();
-            return Ok(card);
-        }
-
-        /// <summary>
-        /// Creates a new card.
-        /// </summary>
-        [Authorize(Roles = "Admin")]  // only authenticated admins can create
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Card card)
-        {
-            var created = await _service.CreateAsync(card);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-        }
-
-        /// <summary>
-        /// Updates an existing card.
-        /// </summary>
-        [Authorize(Roles = "Admin")]
-        [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, [FromBody] Card card)
-        {
-            var updated = await _service.UpdateAsync(id, card);
-            if (updated is null)
-                return NotFound();
-            return Ok(updated);
-        }
-
-        /// <summary>
-        /// Deletes a card by its Id.
-        /// </summary>
-        [Authorize(Roles = "Admin")]
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var success = await _service.DeleteAsync(id);
-            if (!success)
-                return NotFound();
-            return NoContent();
-        }
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        await _cards.DeleteAsync(id);
+        return NoContent();
     }
 }

@@ -1,18 +1,14 @@
 ﻿using Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace Domain.Interfaces
 {
     public interface ICardService
     {
-        Task<IEnumerable<Card>> GetAllAsync();
+        Task<Card> CreateAsync(string title, string contentUrl, IFormFile imageFile);
+        Task UpdateAsync(int id, string title, string contentUrl, IFormFile? imageFile);
+        Task DeleteAsync(int id);
         Task<Card?> GetByIdAsync(int id);
-        Task<Card> CreateAsync(Card card);
-        Task<Card?> UpdateAsync(int id, Card card);
-        Task<bool> DeleteAsync(int id);
+        Task<IReadOnlyList<Card>> ListAsync();
     }
 }

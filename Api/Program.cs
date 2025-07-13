@@ -1,3 +1,4 @@
+using Api.Filters;
 using Domain.Interfaces;
 using Infrastructure;
 using Infrastructure.Repositories;
@@ -17,6 +18,7 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 // 2. Repository és Service (ha van Service layer)
 builder.Services.AddScoped<ICardRepository, CardRepository>();
 builder.Services.AddScoped<ICardService, CardService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 // 3. Controller szolgáltatás
 builder.Services.AddControllers();
@@ -26,6 +28,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Idõskor API", Version = "v1" });
+    c.OperationFilter<SwaggerMultipartFormDataFilter>();
 });
 
 // 5. CORS
@@ -71,5 +74,7 @@ app.UseAuthorization();
 
 // Controller routolás
 app.MapControllers();
+
+app.UseStaticFiles();
 
 app.Run();
