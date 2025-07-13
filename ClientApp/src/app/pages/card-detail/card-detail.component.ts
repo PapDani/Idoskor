@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-card-detail',
   standalone: true,
   imports: [
-    CommonModule    // <-- for *ngIf
+    CommonModule
   ],
   templateUrl: './card-detail.component.html',
   styleUrls: ['./card-detail.component.scss']
