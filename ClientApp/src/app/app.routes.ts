@@ -10,6 +10,7 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'cards', component: CardListComponent },
   { path: 'cards/:id', component: CardDetailComponent },
+  { path: 'admin', redirectTo: 'admin/cards/new', pathMatch: 'full' },
   {
     path: 'admin/cards/new',
     component: CardFormComponent,
@@ -22,3 +23,5 @@ export const routes: Routes = [
   },
   { path: '**', redirectTo: 'cards' }
 ];
+
+
