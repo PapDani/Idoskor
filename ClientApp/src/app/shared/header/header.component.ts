@@ -2,30 +2,31 @@ import { Component } from '@angular/core';
 import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, MatToolbarModule, MatButtonModule, MatIconModule],
   template: `
-    <nav class="flex items-center justify-between p-4 bg-gray-100">
-      <div class="text-xl font-bold cursor-pointer" (click)="goHome()">Időskor</div>
-      <div class="space-x-4">
-        <a routerLink="/cards" class="hover:underline">Home</a>
+    <mat-toolbar color="primary">
+      <span class="cursor-pointer" (click)="goHome()">Időskor</span>
+      <span class="spacer"></span>
 
-        <ng-container *ngIf="!auth.isAdmin">
-          <a routerLink="/login" class="hover:underline">Login</a>
-        </ng-container>
+      <ng-container *ngIf="!auth.isAdmin">
+        <button mat-button routerLink="/cards">Home</button>
+        <button mat-button routerLink="/login">Login</button>
+      </ng-container>
 
-        <ng-container *ngIf="auth.isAdmin">
-          <!-- IDE kerüljön az admin-menü -->
-          <a routerLink="/admin/cards" class="hover:underline">Edit cards</a>
-          <a routerLink="/admin/cards/new" class="hover:underline">New card</a>
-          <button (click)="logout()" class="hover:underline">Logout</button>
-        </ng-container>
-      </div>
-    </nav>
+      <ng-container *ngIf="auth.isAdmin">
+        <button mat-button routerLink="/admin/cards">Edit cards</button>
+        <button mat-button routerLink="/admin/cards/new">New card</button>
+        <button mat-button (click)="logout()">Logout</button>
+      </ng-container>
+    </mat-toolbar>
   `
 })
 export class HeaderComponent {
