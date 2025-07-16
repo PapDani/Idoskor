@@ -1,0 +1,18 @@
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px; // space between cards
+  justify-content: center;
+  padding: 16px;
+}
+
+.example-card {
+  max-width: 400px;
+  width: 100%;
+}
+
+.example-header-image {
+  /* make sure the image covers the card width and keeps aspect ratio */
+  object-fit: cover;
+  height: 200px; // or whatever header-image height you like
+}
