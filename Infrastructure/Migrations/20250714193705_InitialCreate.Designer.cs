@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250712105818_InitialCreate")]
+    [Migration("20250714193705_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -47,6 +47,29 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Cards");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ContentUrl = "/content/welcome",
+                            ImageUrl = "/images/welcome.jpg",
+                            Title = "Welcome"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            ContentUrl = "/content/about",
+                            ImageUrl = "/images/about.jpg",
+                            Title = "About Us"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            ContentUrl = "/content/contact",
+                            ImageUrl = "/images/contact.jpg",
+                            Title = "Contact"
+                        });
                 });
 #pragma warning restore 612, 618
         }

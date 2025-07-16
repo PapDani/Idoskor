@@ -12,7 +12,7 @@ import { RouterModule, RouterOutlet, RouterLink } from '@angular/router';
   template: `
     <div class="p-6">
       <h1 class="text-2xl font-bold mb-4">Admin Dashboard</h1>
-      <router-outlet></router-outlet>   <!-- now works -->
+      <router-outlet></router-outlet>
     </div>
   `
 })

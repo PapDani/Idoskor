@@ -1,7 +1,6 @@
 ﻿using Domain.Entities;
 using Domain.Interfaces;
 using Microsoft.AspNetCore.Http;
-// ahol az AppDbContext/ICardRepository van
 
 namespace Infrastructure.Services
 {
