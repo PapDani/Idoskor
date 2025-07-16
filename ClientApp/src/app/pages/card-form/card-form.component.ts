@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { CardService } from '../../services/card.service';
-import { Card } from '../../api';
+import type { Card } from '../../api';
 
 @Component({
   selector: 'app-card-form',
@@ -13,52 +14,87 @@ import { Card } from '../../api';
   styleUrls: ['./card-form.component.scss']
 })
 export class CardFormComponent implements OnInit {
-  form!: FormGroup;
+  form: FormGroup;
   isEdit = false;
   cardId?: number;
 
+  selectedFile: File | null = null;
+  fileTouched = false;
+
+  currentImageName = '';
+
   constructor(
     private fb: FormBuilder,
-    private service: CardService,
+    private cs: CardService,
     private route: ActivatedRoute,
     private router: Router
   ) {
-
     this.form = this.fb.group({
       title: ['', Validators.required],
-      imageUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\//)]],
-      contentUrl: ['', [Validators.required, Validators.pattern(/^\/.+/)]]
+      contentUrl: ['', Validators.required]
     });
   }
 
   ngOnInit(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
-    if (idParam) {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
       this.isEdit = true;
-      this.cardId = +idParam;
-      this.service.getCard(this.cardId).subscribe(card => {
-        this.form.patchValue(card);
+      this.cardId = +id;
+      this.cs.getCard(this.cardId).subscribe((card: Card) => {
+        this.form.patchValue({
+          title: card.title,
+          contentUrl: card.contentUrl
+        });
+
+        const url = card.imageUrl ?? '';
+        const parts = url.split('/');
+        this.currentImageName = parts.length
+          ? parts[parts.length - 1]
+          : '';
       });
     }
   }
 
-  onSubmit(): void {
-    if (this.form.invalid) return;
-
-    const card: Card = this.form.value as Card;
-    if (this.isEdit && this.cardId != null) {
-      this.service.updateCard(this.cardId, card)
-        .subscribe(() => this.router.navigate(['/cards']));
+  onFileSelected(evt: Event): void {
+    this.fileTouched = true;
+    const input = evt.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedFile = input.files[0];
     } else {
-      this.service.createCard(card)
-        .subscribe(() => this.router.navigate(['/cards']));
+      this.selectedFile = null;
+    }
+  }
+
+  onSubmit(): void {
+    if (this.form.invalid) {
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('title', this.form.value.title);
+    fd.append('contentUrl', this.form.value.contentUrl);
+
+    if (!this.isEdit || this.selectedFile) {
+      fd.append('imageFile', this.selectedFile!);
+    }
+
+    if (this.isEdit) {
+      this.cs.updateCard(this.cardId!, fd)
+        .subscribe(() => this.router.navigate(['/admin/cards']));
+    } else {
+      this.cs.createCard(fd)
+        .subscribe(() => this.router.navigate(['/admin/cards']));
     }
   }
 
   onDelete(): void {
     if (this.isEdit && this.cardId != null) {
-      this.service.deleteCard(this.cardId)
-        .subscribe(() => this.router.navigate(['/cards']));
+      this.cs.deleteCard(this.cardId)
+        .subscribe(() => this.router.navigate(['/admin/cards']));
     }
+  }
+
+  goBack(): void {
+    this.router.navigate(['/admin/cards']);
   }
 }

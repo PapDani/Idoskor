@@ -1,29 +1,58 @@
 ﻿using Domain.Entities;
 using Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace Infrastructure.Services
 {
     public class CardService : ICardService
     {
         private readonly ICardRepository _repo;
-        public CardService(ICardRepository repo) => _repo = repo;
+        private readonly IFileStorageService _files;
 
-        public Task<IEnumerable<Card>> GetAllAsync() => _repo.GetAllAsync();
-        public Task<Card?> GetByIdAsync(int id) => _repo.GetByIdAsync(id);
-
-        public Task<Card> CreateAsync(Card card) => _repo.AddAsync(card);
-
-        public async Task<Card?> UpdateAsync(int id, Card card)
+        public CardService(ICardRepository repo, IFileStorageService files)
         {
-            card.Id = id;
-            return await _repo.UpdateAsync(card);
+            _repo = repo;
+            _files = files;
         }
 
-        public Task<bool> DeleteAsync(int id) => _repo.DeleteAsync(id);
+        public async Task<Card> CreateAsync(string title, string contentUrl, IFormFile imageFile)
+        {
+            var imageUrl = await _files.SaveImageAsync(imageFile);
+            var card = new Card { Title = title, ContentUrl = contentUrl, ImageUrl = imageUrl };
+            await _repo.AddAsync(card);
+            return card;
+        }
+
+        public async Task UpdateAsync(int id, string title, string contentUrl, IFormFile? imageFile)
+        {
+            var card = await _repo.GetByIdAsync(id)
+                       ?? throw new KeyNotFoundException($"Card #{id} not found");
+
+            if (imageFile != null)
+            {
+                await _files.DeleteImageAsync(card.ImageUrl);
+                card.ImageUrl = await _files.SaveImageAsync(imageFile);
+            }
+
+            card.Title = title;
+            card.ContentUrl = contentUrl;
+            await _repo.UpdateAsync(card);
+        }
+
+        public async Task DeleteAsync(int id)
+        {
+            var card = await _repo.GetByIdAsync(id)
+                       ?? throw new KeyNotFoundException($"Card #{id} not found");
+
+            await _files.DeleteImageAsync(card.ImageUrl);
+            await _repo.DeleteAsync(card.Id);
+        }
+
+        public Task<Card?> GetByIdAsync(int id) => _repo.GetByIdAsync(id);
+        public async Task<IReadOnlyList<Card>> ListAsync()
+        {
+            var items = await _repo.GetAllAsync();
+            return items.ToList();
+        }
     }
 }

@@ -8,8 +8,8 @@ import { CommonModule } from '@angular/common';
   selector: 'app-card-list',
   standalone: true,
   imports: [
-    CommonModule,    // <-- add this
-    RouterModule     // <-- for (click)="goDetail(...)"
+    CommonModule,
+    RouterModule
   ],
   templateUrl: './card-list.component.html',
   styleUrls: ['./card-list.component.scss']

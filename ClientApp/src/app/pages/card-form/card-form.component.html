@@ -2,30 +2,55 @@
   <h2 class="text-xl mb-4">
     {{ isEdit ? 'Edit Card' : 'New Card' }}
   </h2>
+
+  <button type="button"
+          (click)="goBack()"
+          class="mb-4 px-4 py-2 bg-gray-400 text-white rounded">
+    ← Back to list
+  </button>
+
   <form [formGroup]="form" (ngSubmit)="onSubmit()">
-    <label>Title</label>
-    <input formControlName="title" class="w-full mb-2 p-2 border" />
-    <div *ngIf="form.controls['title'].invalid && form.controls['title'].touched" class="text-red-600">
+    <label class="block mb-1">Title</label>
+    <input formControlName="title"
+           class="w-full mb-2 p-2 border rounded" />
+    <div *ngIf="form.controls['title'].invalid && form.controls['title'].touched"
+         class="text-red-600 mb-2">
       Title is required.
     </div>
 
-    <label>Image URL</label>
-    <input formControlName="imageUrl" class="w-full mb-2 p-2 border" />
-    <div *ngIf="form.controls['imageUrl'].invalid && form.controls['imageUrl'].touched" class="text-red-600">
-      Must be a valid URL (http/https).
+    <label class="block mb-1">Image</label>
+    <div class="mb-2">
+      <span *ngIf="isEdit" class="block mb-1">
+        Current file: <strong>{{ currentImageName }}</strong>
+      </span>
+      <input type="file"
+             (change)="onFileSelected($event)"
+             class="w-full p-2 border rounded" />
+      <div *ngIf="fileTouched && !selectedFile"
+           class="text-red-600 mt-1">
+        Image file is required.
+      </div>
     </div>
 
-    <label>Content URL</label>
-    <input formControlName="contentUrl" class="w-full mb-2 p-2 border" />
-    <div *ngIf="form.controls['contentUrl'].invalid && form.controls['contentUrl'].touched" class="text-red-600">
-      Must start with “/”.
+    <label class="block mb-1">Content</label>
+    <textarea formControlName="contentUrl"
+              class="w-full mb-2 p-2 border rounded"></textarea>
+    <div *ngIf="form.controls['contentUrl'].invalid && form.controls['contentUrl'].touched"
+         class="text-red-600 mb-2">
+      Content is required.
     </div>
 
     <div class="mt-4 flex space-x-2">
-      <button type="submit" [disabled]="form.invalid" class="px-4 py-2 bg-blue-600 text-white rounded">
+      <button type="submit"
+              [disabled]="
+             form.invalid
+             || (!selectedFile && !isEdit)
+          "
+              class="px-4 py-2 bg-blue-600 text-white rounded">
         {{ isEdit ? 'Save Changes' : 'Create Card' }}
       </button>
-      <button *ngIf="isEdit" type="button" (click)="onDelete()"
+      <button *ngIf="isEdit" type="button"
+              (click)="onDelete()"
               class="px-4 py-2 bg-red-600 text-white rounded">
         Delete
       </button>
