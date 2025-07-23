@@ -1,13 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
 import { CardService } from '../../services/card.service';
 import type { Card } from '../../api';
 
 @Component({
   selector: 'app-admin-card-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatButtonModule],
   template: `
     <div class="p-4">
       <h2 class="text-xl font-bold mb-4">Edit cards</h2>

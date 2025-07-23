@@ -3,13 +3,14 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { CardService } from '../../services/card.service';
 import type { Card } from '../../api';
 
 @Component({
   selector: 'app-card-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, MatButtonModule],
   templateUrl: './card-form.component.html',
   styleUrls: ['./card-form.component.scss']
 })

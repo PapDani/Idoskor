@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatToolbarModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, RouterModule, MatToolbarModule, MatButtonModule, MatIconModule, MatButtonModule],
   template: `
     <mat-toolbar color="primary">
       <span class="cursor-pointer" (click)="goHome()">Időskor</span>
