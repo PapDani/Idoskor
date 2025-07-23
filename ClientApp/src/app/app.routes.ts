@@ -19,7 +19,7 @@ export const routes: Routes = [
       {
         path: 'cards', loadComponent: () =>
           import('./pages/admin-card-list/admin-card-list.component')
-            .then(m => m.AdminCardListComponent),
+            .then(m => m.AdminCardsComponent),
       },
       {
         path: 'cards/new', loadComponent: () =>
