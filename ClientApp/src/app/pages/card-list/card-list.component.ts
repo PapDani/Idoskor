@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { CommonModule } from '@angular/common';
 import { MatGridListModule } from '@angular/material/grid-list';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { RouterModule } from '@angular/router';
 import { CardService } from '../../services/card.service';
@@ -17,7 +18,8 @@ import type { Card } from '../../api';
     CommonModule,
     RouterModule,
     MatGridListModule,
-    MatCardModule
+    MatCardModule,
+    MatButtonModule
   ],
   templateUrl: './card-list.component.html',
   styleUrls: ['./card-list.component.scss']

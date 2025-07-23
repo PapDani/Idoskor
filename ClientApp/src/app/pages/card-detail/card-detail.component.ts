@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CardService } from '../../services/card.service';
+import { MatButtonModule } from '@angular/material/button';
 import { Card } from '../../api';
 import { CommonModule } from '@angular/common';
 
@@ -8,7 +9,8 @@ import { CommonModule } from '@angular/common';
   selector: 'app-card-detail',
   standalone: true,
   imports: [
-    CommonModule
+    CommonModule,
+    MatButtonModule
   ],
   templateUrl: './card-detail.component.html',
   styleUrls: ['./card-detail.component.scss']

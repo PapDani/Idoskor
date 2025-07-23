@@ -3,9 +3,9 @@
     {{ isEdit ? 'Edit Card' : 'New Card' }}
   </h2>
 
-  <button type="button"
-          (click)="goBack()"
-          class="mb-4 px-4 py-2 bg-gray-400 text-white rounded">
+  <button mat-button
+          color="accent"
+          (click)="goBack()">
     ← Back to list
   </button>
 
@@ -41,17 +41,17 @@
     </div>
 
     <div class="mt-4 flex space-x-2">
-      <button type="submit"
-              [disabled]="
-             form.invalid
-             || (!selectedFile && !isEdit)
-          "
-              class="px-4 py-2 bg-blue-600 text-white rounded">
+      <button mat-raised-button
+              color="primary"
+              type="submit"
+              [disabled]="form.invalid || (!selectedFile && !isEdit)">
         {{ isEdit ? 'Save Changes' : 'Create Card' }}
       </button>
-      <button *ngIf="isEdit" type="button"
-              (click)="onDelete()"
-              class="px-4 py-2 bg-red-600 text-white rounded">
+      <button *ngIf="isEdit"
+              mat-raised-button
+              color="warn"
+              type="button"
+              (click)="onDelete()">
         Delete
       </button>
     </div>
