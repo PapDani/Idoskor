@@ -1,1 +1,50 @@
-<p>header works!</p>
+<mat-toolbar color="primary" class="header-toolbar">
+  <span class="cursor-pointer" (click)="goHome()">Időskor</span>
+  <span class="spacer"></span>
+  <ng-container *ngIf="!auth.isAdmin">
+    <button mat-button routerLink="/cards">Home</button>
+    <button mat-button routerLink="/login">Login</button>
+  </ng-container>
+
+  <ng-container *ngIf="auth.isAdmin">
+    <button mat-button routerLink="/admin/cards">Edit cards</button>
+    <button mat-button routerLink="/admin/cards/new">New card</button>
+    <button mat-button (click)="logout()">Logout</button>
+  </ng-container>
+</mat-toolbar>
+
+<nav class="menu-bar">
+  <button mat-button [matMenuTriggerFor]="menuWelcome">Üdvözöljük!</button>
+  <button mat-button [matMenuTriggerFor]="menuGero">Gerontológia Munkabizottság</button>
+  <button mat-button [matMenuTriggerFor]="menuPeme">PEME KM Regionális Tagozata</button>
+  <button mat-button [matMenuTriggerFor]="menuActive">Aktív idősödés</button>
+  <button mat-button [matMenuTriggerFor]="menuScience">Tudomány és kutatás</button>
+  <button mat-button [matMenuTriggerFor]="menuEvents">Programok és események</button>
+  <button mat-button [matMenuTriggerFor]="menuStories">Személyes történetek</button>
+</nav>
+
+<mat-menu #menuWelcome="matMenu">
+  <button mat-menu-item>Rólunk: Rövid bemutatkozás</button>
+  <button mat-menu-item>
+    Céljaink
+    Küldetés és értékek
+  </button>
+</mat-menu>
+<mat-menu #menuGero="matMenu">
+  <button mat-menu-item disabled>– nincs bejegyzés –</button>
+</mat-menu>
+<mat-menu #menuPeme="matMenu">
+  <button mat-menu-item disabled>– nincs bejegyzés –</button>
+</mat-menu>
+<mat-menu #menuActive="matMenu">
+  <button mat-menu-item disabled>– nincs bejegyzés –</button>
+</mat-menu>
+<mat-menu #menuScience="matMenu">
+  <button mat-menu-item disabled>– nincs bejegyzés –</button>
+</mat-menu>
+<mat-menu #menuEvents="matMenu">
+  <button mat-menu-item disabled>– nincs bejegyzés –</button>
+</mat-menu>
+<mat-menu #menuStories="matMenu">
+  <button mat-menu-item disabled>– nincs bejegyzés –</button>
+</mat-menu>
