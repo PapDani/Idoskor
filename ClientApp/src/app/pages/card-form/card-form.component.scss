@@ -1,0 +1,25 @@
+.form-preview-container {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.form-column {
+  flex: 1;
+}
+
+.preview-column {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.example-card {
+  max-width: 400px;
+  width: 100%;
+}
+
+.example-header-image {
+  height: 200px;
+  object-fit: cover;
+}

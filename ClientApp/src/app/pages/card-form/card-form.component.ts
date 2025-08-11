@@ -6,11 +6,20 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { CardService } from '../../services/card.service';
 import type { Card } from '../../api';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+
+interface Preview {
+  title: string;
+  contentUrl: string;
+  imageSrc: string;
+}
 
 @Component({
   selector: 'app-card-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatButtonModule],
+  imports: [CommonModule, ReactiveFormsModule, MatButtonModule, MatCardModule, MatButtonModule, MatFormFieldModule, MatInputModule],
   templateUrl: './card-form.component.html',
   styleUrls: ['./card-form.component.scss']
 })
@@ -36,33 +45,44 @@ export class CardFormComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
+  preview: Preview = {
+    title: '',
+    contentUrl: '',
+    imageSrc: '/assets/placeholder.png'
+  };
+
+  ngOnInit() {
+    const idParam = this.route.snapshot.paramMap.get('id');
+    if (idParam) {
       this.isEdit = true;
-      this.cardId = +id;
-      this.cs.getCard(this.cardId).subscribe((card: Card) => {
+      this.cardId = +idParam;
+
+      this.cs.getCard(this.cardId).subscribe(card => {
         this.form.patchValue({
           title: card.title,
-          contentUrl: card.contentUrl
+          contentUrl: card.contentUrl ?? ''
         });
 
-        const url = card.imageUrl ?? '';
-        const parts = url.split('/');
-        this.currentImageName = parts.length
-          ? parts[parts.length - 1]
-          : '';
+        const imgPath = card.imageUrl ?? '';
+        this.preview = {
+          title: card.title ?? '',
+          contentUrl: card.contentUrl ?? '',
+          imageSrc: `http://localhost:5125${imgPath}`
+        };
       });
     }
+
+    this.form.valueChanges.subscribe(({ title, contentUrl }) => {
+      this.preview.title = title;
+      this.preview.contentUrl = contentUrl;
+    });
   }
 
-  onFileSelected(evt: Event): void {
-    this.fileTouched = true;
+  onFileSelected(evt: Event) {
     const input = evt.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
+    if (input.files?.length) {
       this.selectedFile = input.files[0];
-    } else {
-      this.selectedFile = null;
+      this.preview.imageSrc = URL.createObjectURL(this.selectedFile);
     }
   }
 
