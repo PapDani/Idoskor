@@ -1,0 +1,25 @@
+.header-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.menu-bar {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+  position: sticky;
+  top: 64px; /* toolbar magasság */
+  z-index: 99;
+}
+
+.menu-bar button,
+.header-toolbar button {
+  font-size: 1.3rem;
+}
