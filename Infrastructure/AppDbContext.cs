@@ -16,10 +16,13 @@ namespace Infrastructure
         }
 
         public DbSet<Card> Cards { get; set; } = null!;
+        public DbSet<Page> Pages => Set<Page>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
             modelBuilder.Entity<Card>().HasData(
                 new Card { Id = 1, Title = "Welcome", ImageUrl = "/images/welcome.jpg", ContentUrl = "/content/welcome" },
