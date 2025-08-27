@@ -1,9 +1,9 @@
 <mat-toolbar color="primary" class="header-toolbar">
-  <span class="cursor-pointer" (click)="goHome()">Időskor</span>
+  <span class="cursor-pointer" (click)="goHome()">Aktív Időskor</span>
   <span class="spacer"></span>
   <ng-container *ngIf="!auth.isAdmin">
-    <button mat-button routerLink="/cards">Home</button>
-    <button mat-button routerLink="/login">Login</button>
+    <button mat-button routerLink="/cards">Kezdőlap</button>
+    <button mat-button routerLink="/login">Admin Bejelentkezés</button>
   </ng-container>
 
   <ng-container *ngIf="auth.isAdmin">

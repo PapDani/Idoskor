@@ -1,7 +1,6 @@
-﻿// Api/Controllers/UploadsController.cs
+﻿using Api.DTOs;
 using Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
 namespace Api.Controllers
 {
@@ -12,22 +11,15 @@ namespace Api.Controllers
         private readonly IFileStorageService _files;
         public UploadsController(IFileStorageService files) => _files = files;
 
-        // [Authorize(Roles = "Admin")]
+        // [Authorize(Roles = "Admin")]  // ha szeretnéd védeni, nyugodtan tedd vissza
         [HttpPost]
-        [RequestSizeLimit(50_000_000)]
-        public async Task<IActionResult> Upload([FromForm] IFormFile file)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> Upload([FromForm] FileUploadRequest form)
         {
-            if (file is null || file.Length == 0)
+            if (form.File is null || form.File.Length == 0)
                 return BadRequest("No file uploaded.");
 
-            // Ha a service visszaadja a relatív elérési utat (pl. "/images/xyz.png"),
-            // akkor ezt egyből vissza lehet küldeni:
-            var url = await _files.SaveImageAsync(file);
-
-            // Opcionális: alaptípus ellenőrzés (ha szeretnéd):
-            // var allowed = new[] {"image/png","image/jpeg","image/webp","image/gif"};
-            // if (!allowed.Contains(file.ContentType)) return BadRequest("Unsupported type");
-
+            var url = await _files.SaveImageAsync(form.File); // ← a te szervized szignatúrája
             return Ok(new { url });
         }
     }

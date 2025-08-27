@@ -1,7 +1,8 @@
-﻿using Domain.Entities;
-using Domain.Interfaces;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+using Domain.Entities;
+using Domain.Interfaces;
+using Api.DTOs;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -13,36 +14,39 @@ public class CardsController : ControllerBase
     [HttpGet]
     public Task<IReadOnlyList<Card>> GetAll() => _cards.ListAsync();
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
         var card = await _cards.GetByIdAsync(id);
-        if (card == null) return NotFound();
-        return Ok(card);
+        return card is null ? NotFound() : Ok(card);
     }
 
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Create([FromForm] IFormFile imageFile,
-                                            [FromForm] string title,
-                                            [FromForm] string contentUrl)
+    public async Task<ActionResult<Card>> Create([FromForm] CreateCardForm form)
     {
-        var card = await _cards.CreateAsync(title, contentUrl, imageFile);
-        return CreatedAtAction(nameof(GetById), new { id = card.Id }, card);
+        if (form.Image is null || form.Image.Length == 0)
+            return BadRequest("Image is required.");
+
+        var created = await _cards.CreateAsync(form.Title, form.ContentUrl, form.Image);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
+    [Consumes("multipart/form-data")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Update(int id,
-                                            [FromForm] IFormFile? imageFile,
-                                            [FromForm] string title,
-                                            [FromForm] string contentUrl)
+    public async Task<IActionResult> Update(int id, [FromForm] UpdateCardForm form)
     {
-        await _cards.UpdateAsync(id, title, contentUrl, imageFile);
-        return NoContent();
+        var exists = await _cards.GetByIdAsync(id);
+        if (exists is null) return NotFound();
+
+        await _cards.UpdateAsync(id, form.Title, form.ContentUrl, form.Image);
+
+        return NoContent(); // 204, nincs törzs
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
