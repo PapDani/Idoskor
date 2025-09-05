@@ -9,6 +9,8 @@ import { JwtInterceptor } from './app/interceptors/jwt.interceptor';
 import { LoadingInterceptor } from './app/interceptors/loading.interceptor';
 import { provideAnimations } from '@angular/platform-browser/animations';
 
+import { provideQuillConfig } from 'ngx-quill/config';
+
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
@@ -21,6 +23,20 @@ bootstrapApplication(AppComponent, {
       provide: Configuration,
       useValue: new Configuration({ basePath: '' })
     },
+
+    provideQuillConfig({
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          [{ 'header': [1, 2, 3, false] }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          ['link', 'image'],
+          ['clean']
+        ]
+      },
+      placeholder: 'Írj tartalmat...',
+      theme: 'snow'
+    })
     
   ]
 }).catch(err => console.error(err));

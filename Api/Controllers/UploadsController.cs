@@ -1,26 +1,32 @@
-﻿using Api.DTOs;
-using Domain.Interfaces;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
-namespace Api.Controllers
+public record FileUploadRequest(IFormFile File);
+
+[ApiController]
+[Route("api/[controller]")]
+public class UploadsController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class UploadsController : ControllerBase
+    private readonly IWebHostEnvironment _env;
+    public UploadsController(IWebHostEnvironment env) => _env = env;
+
+    [HttpPost]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(20_000_000)] // 20 MB – igény szerint
+    public async Task<IActionResult> Upload([FromForm] FileUploadRequest request)
     {
-        private readonly IFileStorageService _files;
-        public UploadsController(IFileStorageService files) => _files = files;
+        if (request.File == null || request.File.Length == 0)
+            return BadRequest("No file provided.");
 
-        // [Authorize(Roles = "Admin")]  // ha szeretnéd védeni, nyugodtan tedd vissza
-        [HttpPost]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> Upload([FromForm] FileUploadRequest form)
-        {
-            if (form.File is null || form.File.Length == 0)
-                return BadRequest("No file uploaded.");
+        var imagesDir = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "images");
+        Directory.CreateDirectory(imagesDir);
 
-            var url = await _files.SaveImageAsync(form.File); // ← a te szervized szignatúrája
-            return Ok(new { url });
-        }
+        var ext = Path.GetExtension(request.File.FileName);
+        var name = $"{Guid.NewGuid():N}{ext}";
+        var path = Path.Combine(imagesDir, name);
+        using (var stream = System.IO.File.Create(path))
+            await request.File.CopyToAsync(stream);
+
+        var url = $"/images/{name}";
+        return Ok(new { url });
     }
 }

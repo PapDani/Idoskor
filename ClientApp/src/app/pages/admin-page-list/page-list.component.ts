@@ -1,92 +1,51 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { QuillModule } from 'ngx-quill';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { HttpClient, HttpEventType } from '@angular/common/http';
-import { PageService } from '../../services/page.service';
+import { RouterLink } from '@angular/router';
+import { PagesService, PageDto } from '../../services/page.service';
 
- @Component({
- selector: 'app-admin-page-edit',
-      standalone: true,
-      imports: [CommonModule, FormsModule, QuillModule, MatButtonModule, RouterModule],
-      template: `
-    <h2 class="mb-4">Oldal szerkesztése: {{ key }}</h2>
-    <quill-editor
-      [(ngModel)]="content"
-      [format]="'html'"
-      [placeholder]="'Írd ide a tartalmat…'"
-      [modules]="modules"
-      theme="snow"
-      class="editor">
-    </quill-editor>
-    <div class="mt-4 flex gap-2">
-      <button mat-raised-button color="primary" (click)="save()">Mentés</button>
-      <button mat-button (click)="back()">Mégse</button>
-    </div>
+@Component({
+  standalone: true,
+  selector: 'app-admin-pages-list',
+  imports: [CommonModule, RouterLink],
+  template: `
+    <section class="wrap">
+      <header>
+        <h1>Oldalak (CMS)</h1>
+        <a routerLink="/admin/pages/about">„about” szerkesztése</a>
+      </header>
+
+      <table class="grid">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Cím</th>
+            <th>Utoljára frissítve</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of pages">
+            <td><code>{{ p.key }}</code></td>
+            <td>{{ p.title }}</td>
+            <td>{{ p.updatedUtc | date:'yyyy.MM.dd HH:mm' }}</td>
+            <td><a [routerLink]="['/admin/pages', p.key]">Szerkesztés</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
   `,
-      styles: [`.editor{min-height:300px}`]
-  })
-  export class AdminPageEditComponent implements OnInit {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private http = inject(HttpClient);
-  private pages = inject(PageService);
-
-    key = '';
-  content = '';
-
-    modules = {
-      toolbar: {
-          container: [
-      [{ header: [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ list: 'ordered' }, { list: 'bullet' }],
-      [{ align: [] }],
-      ['link', 'image'],
-      ['clean']
-            ],
-            handlers: {
-              image: () => this.selectAndUploadImage()
-              }
-        }
-    };
-
-    ngOnInit() {
-      this.key = this.route.snapshot.paramMap.get('key') ?? '';
-      if (!this.key) return;
-      this.pages.get(this.key).subscribe(p => this.content = p.content ?? '');
-    }
-
-    save() {
-      this.pages.save(this.key, this.key, this.content).subscribe(() => this.back());
-    }
-
-    back() { this.router.navigate(['/admin/pages']); }
-
-    private selectAndUploadImage() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = () => {
-          const file = input.files?.[0];
-          if (!file) return;
-          const fd = new FormData(); fd.append('file', file);
-          this.http.post<{ url: string }>('/api/Uploads', fd, {
- reportProgress: true, observe: 'events'
-          }).subscribe(evt => {
-              if (evt.type === HttpEventType.Response && evt.body?.url) {
-                  // beszúrás a kurzorhoz:
-                    const editorEl = document.querySelector('.ql-editor') as HTMLElement;
-                  const Quill = (window as any).Quill || (await import('quill')).default;
-                  const editor = (Quill as any).find(editorEl);
-                  const range = editor.getSelection(true);
-                  editor.insertEmbed(range.index, 'image', evt.body.url, 'user');
-                  editor.setSelection(range.index + 1, 0);
-                }
-            });
-      };
-    input.click();
+  styles: [`
+    .wrap{max-width:1100px;margin:1rem auto;padding:0 1rem}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+    table.grid{width:100%;border-collapse:collapse}
+    table.grid th, table.grid td{border-bottom:1px solid #e6e6e6;padding:.5rem .4rem;text-align:left}
+    code{background:#f4f4f4;padding:0 .25rem;border-radius:4px}
+  `]
+})
+export class AdminPagesListComponent {
+  private pagesSvc = inject(PagesService);
+  pages: PageDto[] = [];
+  constructor() {
+    this.pagesSvc.list().subscribe(list => this.pages = list);
   }
 }

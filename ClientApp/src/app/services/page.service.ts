@@ -1,14 +1,28 @@
-import { Injectable } from '@angular/core';
-import { PagesService, type PageDto, type UpsertPageDto } from '../api';
+import { inject, Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-  @Injectable({ providedIn: 'root' })
-  export class PageService {
-  constructor(private api: PagesService) { }
-  list(): Observable < PageDto[] > { return this.api.apiPagesGet(); }
-   get(key: string): Observable < PageDto > { return this.api.apiPagesKeyGet(key); }
-     save(key: string, title: string, content: string) {
-      const body: UpsertPageDto = { title, content };
-      return this.api.apiPagesKeyPut(key, body);
-    }
+export interface PageDto {
+  key: string;
+  title: string;
+  content: string; // HTML
+  updatedUtc?: string;
+}
+
+@Injectable({ providedIn: 'root' })
+export class PagesService {
+  private http = inject(HttpClient);
+  private base = '/api/Pages';
+
+  list(): Observable<PageDto[]> {
+    return this.http.get<PageDto[]>(this.base);
+  }
+
+  get(key: string) {
+    return this.http.get<PageDto>(`${this.base}/${encodeURIComponent(key)}`);
+  }
+
+  update(key: string, body: { title: string; content: string }) {
+    return this.http.put<void>(`${this.base}/${encodeURIComponent(key)}`, body);
+  }
 }
