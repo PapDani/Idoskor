@@ -6,6 +6,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { DynamicMenuComponent } from '../../components/dynamic-menu/dynamic-menu.component';
 
 
 @Component({
@@ -16,7 +17,9 @@ import { MatMenuModule } from '@angular/material/menu';
     RouterModule,
     MatToolbarModule,
     MatButtonModule,
-    MatMenuModule
+    MatMenuModule,
+    DynamicMenuComponent,
+    MatIconModule
   ],
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss']

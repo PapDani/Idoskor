@@ -17,6 +17,7 @@ namespace Infrastructure
 
         public DbSet<Card> Cards { get; set; } = null!;
         public DbSet<Page> Pages => Set<Page>();
+        public DbSet<MenuItem> MenuItems => Set<MenuItem>();
 
         protected override void OnModelCreating(ModelBuilder b)
         {
@@ -29,19 +30,6 @@ namespace Infrastructure
                 new Card { Id = 2, Title = "About Us", ImageUrl = "/images/about.jpg", ContentUrl = "/content/about" },
                 new Card { Id = 3, Title = "Contact", ImageUrl = "/images/contact.jpg", ContentUrl = "/content/contact" }
             );
-
-            b.Entity<Page>(e =>
-            {
-                e.ToTable("Pages");               // tábla neve
-                e.HasKey(x => x.Id);
-                e.Property(x => x.Key)
-                    .IsRequired()
-                    .HasMaxLength(100);
-                e.HasIndex(x => x.Key).IsUnique();
-                e.Property(x => x.Title).HasMaxLength(200);
-                e.Property(x => x.Content).HasColumnType("nvarchar(max)");
-                e.Property(x => x.UpdatedUtc).HasDefaultValueSql("GETUTCDATE()");
-            });
         }
     }
 }
