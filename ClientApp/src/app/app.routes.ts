@@ -29,12 +29,12 @@ export const routes: Routes = [
       },
 
       // Oldalak (lista) + szerkesztő (ha használod)
-      /*{
+      {
         path: 'pages',
         loadComponent: () =>
-          import('./pages/admin-pages-list/admin-pages-list.component')
+          import('./pages/admin-page-list/admin-page-list.component')
             .then(m => m.AdminPagesListComponent),
-      },*/
+      },
       {
         path: 'pages/:key',
         loadComponent: () =>
