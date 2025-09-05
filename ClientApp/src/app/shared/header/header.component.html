@@ -1,15 +1,17 @@
 <mat-toolbar color="primary" class="header-toolbar">
-  <span class="cursor-pointer" (click)="goHome()">Időskor</span>
+  <span class="cursor-pointer" (click)="goHome()">Aktív Időskor</span>
   <span class="spacer"></span>
   <ng-container *ngIf="!auth.isAdmin">
-    <button mat-button routerLink="/cards">Home</button>
-    <button mat-button routerLink="/login">Login</button>
+    <button mat-button routerLink="/cards">Kezdőlap</button>
+    <button mat-button routerLink="/login">Admin Bejelentkezés</button>
   </ng-container>
 
   <ng-container *ngIf="auth.isAdmin">
-    <button mat-button routerLink="/admin/cards">Edit cards</button>
-    <button mat-button routerLink="/admin/cards/new">New card</button>
-    <button mat-button (click)="logout()">Logout</button>
+    <button mat-button routerLink="/admin/cards">Kártyák szerkesztése</button>
+    <button mat-button routerLink="/admin/cards/new">Új kártya</button>
+    <button mat-button routerLink="/admin/pages">Oldalak (lista)</button>
+    <button mat-button routerLink="/admin/pages/about">Oldal szerkesztő (Quill)</button>
+    <button mat-button (click)="logout()">Kijelentkezés</button>
   </ng-container>
 </mat-toolbar>
 
@@ -24,7 +26,7 @@
 </nav>
 
 <mat-menu #menuWelcome="matMenu">
-  <button mat-menu-item>Rólunk: Rövid bemutatkozás</button>
+  <button mat-menu-item routerLink="/pages/about">Rólunk: Rövid bemutatkozás</button>
   <button mat-menu-item>
     Céljaink
     Küldetés és értékek
