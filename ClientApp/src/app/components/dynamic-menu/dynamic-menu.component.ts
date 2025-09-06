@@ -4,6 +4,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { MenuNode, MenuService } from '../../services/menu.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   standalone: true,
@@ -41,10 +42,7 @@ import { MenuNode, MenuService } from '../../services/menu.service';
               </button>
 
               <ng-container *ngIf="child.children.length">
-                <button
-                  mat-menu-item
-                  [matMenuTriggerFor]="subMenu"
-                  [disabled]="!child.isEnabled">
+                <button mat-menu-item [matMenuTriggerFor]="subMenu" [disabled]="!child.isEnabled">
                   {{ child.label }}
                 </button>
                 <mat-menu #subMenu="matMenu">
@@ -83,9 +81,14 @@ export class DynamicMenuComponent {
   tree: MenuNode[] = [];
 
   constructor() {
-    this.menuSvc.getTree().subscribe(t => {
-      this.tree = (t ?? []).filter(x => x.isEnabled || x.children.length > 0);
-    });
+    this.menuSvc.tree$
+      .pipe(takeUntilDestroyed())
+      .subscribe((t: MenuNode[]) => {
+        const arr: MenuNode[] = Array.isArray(t) ? t : [];
+        this.tree = arr.filter((x: MenuNode) => x.isEnabled || x.children.length > 0);
+      });
+
+    this.menuSvc.load();
   }
 
   trackById = (_: number, n: MenuNode) => n.id;

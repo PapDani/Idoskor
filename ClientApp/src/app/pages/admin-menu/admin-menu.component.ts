@@ -10,6 +10,7 @@ import { ReactiveFormsModule, NonNullableFormBuilder } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { HttpClient } from '@angular/common/http';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { HelpBoxComponent } from '../../components/help-box/help-box.component';
 
 type PageOption = { key: string; title: string };
 
@@ -18,17 +19,23 @@ type PageOption = { key: string; title: string };
   selector: 'app-admin-menu',
   imports: [
     CommonModule, ReactiveFormsModule, MatButtonModule, MatSlideToggleModule,
-    MatFormFieldModule, MatInputModule, MatSelectModule, DragDropModule, MatSnackBarModule
+    MatFormFieldModule, MatInputModule, MatSelectModule, DragDropModule, MatSnackBarModule,
+    HelpBoxComponent
   ],
   template: `
   <section class="wrap">
-    <header class="head">
+    <header class="head sticky-top">
       <h1>Menü szerkesztő</h1>
-      <button mat-raised-button color="primary" (click)="addRoot()">+ Gyökér menüpont</button>
+      <div class="head-actions">
+        <button mat-stroked-button color="primary" (click)="addRoot()">+ Gyökér menüpont</button>
+        <button mat-raised-button color="accent" (click)="saveOrder()" [disabled]="saving()">
+          {{ saving() ? 'Mentés...' : 'Sorrend mentése' }}
+        </button>
+      </div>
     </header>
 
     <div class="columns">
-      <!-- Fő szerkesztő (fa + akciógomb alatta) -->
+      <!-- Fő szerkesztő -->
       <div class="tree-area">
         <div class="tree">
           <div class="root"
@@ -73,32 +80,31 @@ type PageOption = { key: string; title: string };
             </div>
           </div>
 
-          <!-- AKCIÓSÁV A SZERKESZTŐ ALATT -->
-          <div class="actions">
+          <!-- Alsó sticky sáv -->
+          <div class="sticky-bottom">
             <button mat-raised-button color="accent" (click)="saveOrder()" [disabled]="saving()">
               {{ saving() ? 'Mentés...' : 'Sorrend mentése' }}
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- Tippek oldalsáv -->
-      <aside class="help">
-        <h3>Tippek</h3>
-        <ul>
-          <li>Fogd meg a <strong>::</strong> ikonnál és húzd a kívánt helyre (drag & drop).</li>
-          <li>Gyerek-listák között is áthúzhatsz (root ⇄ child).</li>
-          <li>A „cikk” mezővel hozzárendelheted a kiválasztott oldalt a menüponthoz.</li>
-          <li>„látható” ki/be – a fejlécben csak a látható vagy gyerekkel bíró elemek jelennek meg.</li>
-        </ul>
-      </aside>
+        <!-- Tippek -->
+        <app-help-box
+          [items]="[
+            'Fogd meg a :: ikonnál és húzd a kívánt helyre (drag & drop).',
+            'Gyerek-listák közt is áthúzhatsz (root ⇄ child).',
+            'A „cikk” mezővel hozzárendelheted az oldalt a menüponthoz.',
+            '„látható” ki/be – a fejlécben csak a látható vagy gyerekkel bíró elemek jelennek meg.',
+            'Mentés után a fejléc menü azonnal frissül.'
+          ]">
+        </app-help-box>
+      </div>
     </div>
   </section>
   `,
   styles: [`
     .wrap{max-width:1200px;margin:1rem auto;padding:0 1rem}
-    .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
-    .columns{display:grid;grid-template-columns:1fr 320px;gap:1rem}
+    .columns{display:block}
     .tree-area{display:flex;flex-direction:column;gap:.75rem}
     .tree{border:1px solid #e6e6e6;border-radius:8px;background:#fff}
     .root, .children{min-height:2rem;padding:.75rem}
@@ -109,8 +115,10 @@ type PageOption = { key: string; title: string };
     .title{flex:1 1 240px;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px}
     .page-select{min-width:260px}
     .children{margin-left:2rem;border-left:2px dotted #eee}
-    .actions{display:flex;justify-content:flex-end;padding:.75rem;border-top:1px solid #eee;background:#fafafa;border-radius:0 0 8px 8px}
-    aside.help{border:1px dashed #ccc;border-radius:8px;padding:.75rem;background:#fdfdfd}
+    .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+    .head-actions{display:flex;gap:.5rem}
+    .sticky-top{position:sticky;top:0;z-index:5;background:#fff;padding:.5rem 0;border-bottom:1px solid #eee}
+    .sticky-bottom{position:sticky;bottom:0;z-index:5;display:flex;justify-content:flex-end;gap:.5rem;padding:.5rem;border-top:1px solid #eee;background:rgba(255,255,255,.9);border-radius:0 0 8px 8px}
   `]
 })
 export class AdminMenuComponent {
@@ -123,29 +131,28 @@ export class AdminMenuComponent {
   pages: PageOption[] = [];
   saving = signal(false);
 
-  get childLists() {
-    return this.tree.map(n => 'list-' + n.id);
-  }
+  get childLists() { return this.tree.map(n => 'list-' + n.id); }
 
   constructor() {
-    this.reload();
+    // mindig a szolgáltatás által közzétett fát mutatjuk
+    this.menu.tree$.subscribe(t => this.tree = t ?? []);
+    this.menu.load();
+
+    // Oldalak a cikk-kapcsoláshoz
     this.http.get<PageOption[]>('/api/Pages')
       .subscribe(list => this.pages = list.map(p => ({ key: (p as any).key, title: (p as any).title || (p as any).key })));
-  }
-
-  reload() {
-    this.menu.getTree().subscribe(t => this.tree = t ?? []);
   }
 
   trackById = (_: number, n: MenuNode) => n.id;
 
   addRoot() {
-    this.menu.create({ label: 'Új menüpont', order: this.tree.length, isEnabled: true }).subscribe(() => this.reload());
+    this.menu.create({ label: 'Új menüpont', order: this.tree.length, isEnabled: true })
+      .subscribe(() => this.snack.open('Gyökér menüpont hozzáadva ✅', undefined, { duration: 1500 }));
   }
-
   addChild(parent: MenuNode) {
     const order = parent.children.length;
-    this.menu.create({ label: 'Új almenu', parentId: parent.id, order, isEnabled: true }).subscribe(() => this.reload());
+    this.menu.create({ label: 'Új almenu', parentId: parent.id, order, isEnabled: true })
+      .subscribe(() => this.snack.open('Almenü hozzáadva ✅', undefined, { duration: 1500 }));
   }
 
   rename(n: MenuNode, label: string) {
@@ -156,7 +163,7 @@ export class AdminMenuComponent {
       order: n.order,
       isEnabled: n.isEnabled,
       pageKey: n.pageKey || null
-    }).subscribe(() => this.reload());
+    }).subscribe(() => this.snack.open('Név mentve ✅', undefined, { duration: 1000 }));
   }
 
   toggle(n: MenuNode, enabled: boolean) {
@@ -167,7 +174,7 @@ export class AdminMenuComponent {
       order: n.order,
       isEnabled: enabled,
       pageKey: n.pageKey || null
-    }).subscribe(() => this.reload());
+    }).subscribe(() => this.snack.open('Láthatóság mentve ✅', undefined, { duration: 1000 }));
   }
 
   setPage(n: MenuNode, pageKey: string | null) {
@@ -177,13 +184,16 @@ export class AdminMenuComponent {
       parentId: n.parentId,
       order: n.order,
       isEnabled: n.isEnabled,
-      pageKey: pageKey
-    }).subscribe(() => this.reload());
+      pageKey
+    }).subscribe(() => this.snack.open('Cikk hozzárendelve ✅', undefined, { duration: 1000 }));
   }
 
   remove(n: MenuNode) {
     if (!confirm('Biztosan törlöd? Előbb mozgasd/ürítsd a gyerekeit.')) return;
-    this.menu.delete(n.id).subscribe(() => this.reload());
+    this.menu.delete(n.id).subscribe({
+      next: () => this.snack.open('Menüpont törölve ✅', undefined, { duration: 1500 }),
+      error: err => this.snack.open((err?.error || 'Törlés sikertelen ❌'), undefined, { duration: 2500 })
+    });
   }
 
   onDrop(event: CdkDragDrop<MenuNode[]>, newParentId: number | null) {
@@ -215,11 +225,11 @@ export class AdminMenuComponent {
     this.menu.reorder(payload).subscribe({
       next: () => {
         this.saving.set(false);
-        this.snack.open('Sorrend elmentve ✅', undefined, { duration: 2000 });
+        this.snack.open('Sorrend elmentve ✅', undefined, { duration: 1500 });
       },
       error: () => {
         this.saving.set(false);
-        this.snack.open('Mentés sikertelen ❌', undefined, { duration: 3000 });
+        this.snack.open('Mentés sikertelen ❌', undefined, { duration: 2500 });
       }
     });
   }
