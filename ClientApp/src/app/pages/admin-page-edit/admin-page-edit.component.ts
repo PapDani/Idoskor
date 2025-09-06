@@ -1,48 +1,81 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { QuillModule, QuillModules } from 'ngx-quill';
 import Quill from 'quill';
 import DOMPurify from 'dompurify';
 import { PagesService, PageDto } from '../../services/page.service';
 import { UploadsService } from '../../services/uploads.service';
 import { catchError, of } from 'rxjs';
-
-// Angular Material snackbar + button a standalone komponenshez
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { HelpBoxComponent } from '../../components/help-box/help-box.component';
+import { NewPageDialogComponent, NewPageDialogResult } from './new-page-dialog.component';
 
 @Component({
   standalone: true,
   selector: 'app-admin-page-edit',
-  imports: [CommonModule, ReactiveFormsModule, QuillModule, MatSnackBarModule, MatButtonModule],
+  imports: [
+    CommonModule, ReactiveFormsModule, QuillModule,
+    MatSnackBarModule, MatButtonModule, MatDialogModule,
+    HelpBoxComponent
+  ],
   template: `
-    <form [formGroup]="form" class="page-form" (ngSubmit)="save()">
-      <input formControlName="title" placeholder="Cím" class="title-input"/>
+    <section class="wrap">
+      <header class="head">
+        <h1>Oldal szerkesztő</h1>
+        <div class="actions-top">
+          <button mat-stroked-button type="button" (click)="openPublic()">Megnyitás (publikus)</button>
+          <button mat-raised-button color="primary" type="button" (click)="newPage()">+ Új cikk</button>
+        </div>
+      </header>
 
-      <div class="editor-shell">
-        <quill-editor
-          [modules]="modules"
-          formControlName="content"
-          (onEditorCreated)="onEditorCreated($event)">
-        </quill-editor>
-      </div>
+      <app-help-box
+        [items]="[
+          'A cím és a tartalom módosítható, a Mentés gombbal elmentődik.',
+          'Képet a képtool gombbal tölthetsz fel; a képek automatikusan beágyazódnak.',
+          'Új cikk létrehozásához kattints a + Új cikk gombra – nem navigálunk el, csak a kulcs és a cím áll be.',
+          'Mentés után az oldal azonnal elérhető lesz a /pages/<kulcs> címen.',
+          'Biztonság: a tartalom szerveroldalon is szűrve van (HTML sanitization).'
+        ]">
+      </app-help-box>
 
-      <div class="form-actions">
-        <button mat-raised-button color="primary" type="submit" [disabled]="saving()">Mentés</button>
-        <button mat-stroked-button type="button" (click)="openPublic()">Megnyitás (publikus)</button>
-      </div>
-    </form>
+      <form [formGroup]="form" class="page-form" (ngSubmit)="save()">
+        <div class="meta">
+          <input formControlName="title" placeholder="Cím" class="title-input"/>
+          <div class="key-line">Kulcs: <code>{{ key }}</code></div>
+        </div>
+
+        <div class="editor-shell">
+          <quill-editor
+            [modules]="modules"
+            formControlName="content"
+            (onEditorCreated)="onEditorCreated($event)">
+          </quill-editor>
+        </div>
+
+        <div class="form-actions">
+          <button mat-raised-button color="primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Mentés...' : 'Mentés' }}
+          </button>
+        </div>
+      </form>
+    </section>
   `,
   styles: [`
-    .page-form { display: grid; gap: 1rem; max-width: 1100px; margin: 1rem auto; }
-    .title-input { padding: .6rem .8rem; font-size: 1.1rem; border: 1px solid #ddd; border-radius: 6px; }
-    /* nagy editor */
+    .wrap{max-width:1100px;margin:1rem auto;padding:0 1rem}
+    .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+    .actions-top{display:flex;gap:.5rem;align-items:center}
+    .page-form { display: grid; gap: 1rem; }
+    .meta{display:flex;gap:1rem;align-items:center}
+    .title-input { flex:1 1 auto; padding: .6rem .8rem; font-size: 1.1rem; border: 1px solid #ddd; border-radius: 6px; }
+    .key-line{font-size:.95rem;color:#555}
+    .key-line code{background:#f5f5f5;padding:.1rem .3rem;border-radius:4px}
     .editor-shell { border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
     .editor-shell .ql-container { min-height: 75vh; }
     .editor-shell .ql-editor { min-height: calc(75vh - 42px); }
-    /* gombok az editor ALATT, nem belelógva */
     .form-actions { display: flex; justify-content: flex-end; gap: .75rem; }
   `]
 })
@@ -50,8 +83,10 @@ export class AdminPageEditComponent {
   private pages = inject(PagesService);
   private uploads = inject(UploadsService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private fb = inject(NonNullableFormBuilder);
   private snack = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   key = this.route.snapshot.paramMap.get('key') ?? 'about';
   form = this.fb.group({
@@ -81,10 +116,13 @@ export class AdminPageEditComponent {
   }
 
   constructor() {
+    this.loadCurrent();
+  }
+
+  private loadCurrent(): void {
     this.pages.get(this.key)
       .pipe(
         catchError(err => {
-          // 404 esetén üres formot nyitunk; Mentéskor upsert létrehozza
           if (err?.status === 404) {
             return of({ key: this.key, title: '', content: '' } as PageDto);
           }
@@ -97,6 +135,25 @@ export class AdminPageEditComponent {
           content: p.content ?? ''
         });
       });
+  }
+
+  newPage(): void {
+    const ref = this.dialog.open<NewPageDialogComponent, unknown, NewPageDialogResult | undefined>(NewPageDialogComponent, {
+      width: '520px',
+      disableClose: true
+    });
+    ref.afterClosed().subscribe((res) => {
+      if (!res) return;
+      // 1) állítsuk be lokálisan az új kulcsot és cím/üres tartalmat
+      this.key = res.key;
+      this.form.reset({ title: res.title, content: '' });
+
+      // 2) (opcionális) URL frissítése az új kulcsra, hogy F5 után is erre nyíljon
+      this.router.navigate(['../', this.key], { relativeTo: this.route, replaceUrl: true });
+
+      // 3) menteni nem muszáj azonnal – a felhasználó ráér megnyomni a Mentés gombot
+      this.snack.open(`Új cikk előkészítve: ${this.key} — nyomj Mentést a létrehozáshoz`, undefined, { duration: 2500 });
+    });
   }
 
   private handleImage(): void {
@@ -130,7 +187,6 @@ export class AdminPageEditComponent {
       next: () => {
         this.saving.set(false);
         this.snack.open('Mentve ✅', undefined, { duration: 2000 });
-        // itt maradunk az oldalon; nem navigálunk el
       },
       error: () => {
         this.saving.set(false);
