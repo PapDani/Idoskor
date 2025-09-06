@@ -1,21 +1,24 @@
 <mat-toolbar color="primary" class="header-toolbar">
-  <span class="" (click)="goHome()">Aktív Időskor</span>
+  <span class="cursor-pointer" (click)="goHome()">Aktív Időskor</span>
+  <button mat-button routerLink="/cards" class="news-left">Hírek</button>
   <span class="spacer"></span>
 
+  <!-- Nem admin -->
   <ng-container *ngIf="!auth.isAdmin">
-    <button mat-button routerLink="/cards">Kezdőlap</button>
     <button mat-button routerLink="/login">Admin Bejelentkezés</button>
   </ng-container>
 
+  <!-- Admin -->
   <ng-container *ngIf="auth.isAdmin">
     <button mat-button routerLink="/admin/cards">Kártyák szerkesztése</button>
     <button mat-button routerLink="/admin/cards/new">Új kártya</button>
-    <button mat-button routerLink="/admin/pages">Oldalak (lista)</button>
     <button mat-button routerLink="/admin/pages/about">Oldal szerkesztő (Quill)</button>
+    <button mat-button routerLink="/admin/pages">Oldalak (lista)</button>
     <button mat-button routerLink="/admin/menu">Menü szerkesztő</button>
+    <button mat-button routerLink="/cards">Hírek</button>
     <button mat-button (click)="logout()">Kijelentkezés</button>
   </ng-container>
 </mat-toolbar>
 
-<!-- DINAMIKUS MENÜ (a régi statikus nav helyett) -->
+<!-- Dinamikus menü (az API-ból) -->
 <app-dynamic-menu></app-dynamic-menu>

@@ -8,9 +8,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { HelpBoxComponent } from '../../components/help-box/help-box.component';
 import { MenuNode, MenuService } from '../../services/menu.service';
-import { slugify } from '../../utils/slugify';
+import { slugify, slugifyPath } from '../../utils/slugify';
+import { PageEditDialogComponent } from './page-edit-dialog.component';
+import { map, of, catchError } from 'rxjs';
 
 type PageListItem = {
   key: string;
@@ -27,6 +30,7 @@ type MenuLabelOption = { id: number; label: string; path: string };
   imports: [
     CommonModule, RouterLink, ReactiveFormsModule,
     MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule, MatSelectModule,
+    MatDialogModule,
     HelpBoxComponent
   ],
   template: `
@@ -39,9 +43,9 @@ type MenuLabelOption = { id: number; label: string; path: string };
         [items]="[
           'Itt látod az összes cikket és a hozzájuk kapcsolódó menüpontokat.',
           'Új cikk létrehozása itt helyben történik (nem navigálunk el).',
-          'Menüpont név alapján is kérhetsz kulcs javaslatot (legördülő).',
-          'Az első Mentés után a szerkesztőben bővítheted a tartalmat.',
-          'Cikk menühöz rendelése: Menü szerkesztő → a megfelelő menüpont „cikk” mezője.'
+          'Kérhetsz kulcsjavaslatot egy meglévő menüpont útvonalából.',
+          'Duplikált kulcsot nem engedünk.',
+          'Modális szerkesztéssel gyorsan tudod javítani a tartalmat.'
         ]">
       </app-help-box>
 
@@ -57,8 +61,11 @@ type MenuLabelOption = { id: number; label: string; path: string };
 
         <mat-form-field appearance="outline" class="key">
           <mat-label>Kulcs (URL-barát)</mat-label>
-          <input matInput formControlName="key" placeholder="pl. about, kapcsolat, gyakori-kerdesek">
+          <input matInput formControlName="key" placeholder="pl. about, kapcsolat, gyakori-kerdesek" (blur)="checkDup()">
           <mat-hint>kisbetű, szám, kötőjel</mat-hint>
+          <mat-error *ngIf="createForm.controls.key.hasError('duplicate')">
+            Ez a kulcs már létezik. Válassz másikat.
+          </mat-error>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="title">
@@ -66,7 +73,9 @@ type MenuLabelOption = { id: number; label: string; path: string };
           <input matInput formControlName="title" placeholder="Cím" (input)="syncKeyFromTitle()">
         </mat-form-field>
 
-        <button mat-raised-button color="primary" type="submit" [disabled]="createForm.invalid">Létrehozás</button>
+        <button mat-raised-button color="primary" type="submit" [disabled]="createForm.invalid || checkingDup">
+          {{ checkingDup ? 'Ellenőrzés…' : 'Létrehozás' }}
+        </button>
       </form>
 
       <table class="grid">
@@ -90,7 +99,10 @@ type MenuLabelOption = { id: number; label: string; path: string };
               <ng-template #none><span class="muted">— nincs hozzárendelve —</span></ng-template>
             </td>
             <td>{{ p.updatedUtc | date:'yyyy.MM.dd HH:mm' }}</td>
-            <td><a [routerLink]="['/admin/pages', p.key]">Szerkesztés</a></td>
+            <td class="actions">
+              <a [routerLink]="['/admin/pages', p.key]">Szerkesztés</a>
+              <button mat-stroked-button (click)="editModal(p.key)">Modális szerkesztés</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -109,6 +121,7 @@ type MenuLabelOption = { id: number; label: string; path: string };
     .title{min-width:300px}
     table.grid{width:100%;border-collapse:collapse}
     table.grid th, table.grid td{border-bottom:1px solid #e6e6e6;padding:.5rem .4rem;text-align:left;vertical-align:top}
+    td.actions{display:flex;gap:.5rem;align-items:center}
     code{background:#f4f4f4;padding:0 .25rem;border-radius:4px}
     .muted{color:#888}
   `]
@@ -119,9 +132,11 @@ export class AdminPagesListComponent {
   private router = inject(Router);
   private snack = inject(MatSnackBar);
   private menu = inject(MenuService);
+  private dialog = inject(MatDialog);
 
   pages: PageListItem[] = [];
   menuOptions: MenuLabelOption[] = [];
+  checkingDup = false;
 
   createForm = this.fb.group({
     key: this.fb.control('', {
@@ -135,7 +150,6 @@ export class AdminPagesListComponent {
 
   constructor() {
     this.loadPages();
-    // lapos lista a menüfa címkéiből (útvonal formában)
     this.menu.tree$.subscribe((t: MenuNode[]) => {
       const out: MenuLabelOption[] = [];
       const walk = (n: MenuNode, trail: string[]) => {
@@ -156,13 +170,11 @@ export class AdminPagesListComponent {
 
   useMenuName(opt: MenuLabelOption | null) {
     if (!opt) return;
-    const slug = slugify(opt.label);
-    // ha a key mezőt még nem írta át kézzel, vagy üres – töltsük
+    const slug = slugifyPath(opt.path);
     if (!this.createForm.controls.key.dirty || !this.createForm.controls.key.value) {
       this.createForm.controls.key.setValue(slug);
       this.createForm.controls.key.markAsDirty();
     }
-    // ha nincs cím, beírjuk azt is
     if (!this.createForm.controls.title.value) {
       this.createForm.controls.title.setValue(opt.label);
     }
@@ -176,22 +188,51 @@ export class AdminPagesListComponent {
     }
   }
 
+  checkDup(): void {
+    const key = this.createForm.controls.key.value?.trim();
+    if (!key) return;
+    this.checkingDup = true;
+    this.http.get(`/api/Pages/${encodeURIComponent(key)}`, { observe: 'response' })
+      .pipe(
+        map(() => true),
+        catchError(err => of(err?.status === 404 ? false : true))
+      )
+      .subscribe(exists => {
+        this.checkingDup = false;
+        this.createForm.controls.key.setErrors(exists ? { ...(this.createForm.controls.key.errors || {}), duplicate: true } : null);
+      });
+  }
+
   /** Új cikk létrehozása PUT upserttel – nem navigálunk el. */
   create(): void {
     const { key, title } = this.createForm.getRawValue();
     if (!key) return;
 
+    // ha duplikátum, ne küldjük el
+    if (this.createForm.controls.key.hasError('duplicate')) {
+      this.snack.open('Ez a kulcs már létezik. Adj meg másikat.', undefined, { duration: 2500 });
+      return;
+    }
+
     const body = { title: title ?? '', content: '' };
     this.http.put<void>(`/api/Pages/${encodeURIComponent(key)}`, body).subscribe({
       next: () => {
-        this.snack.open('Cikk létrehozva ✅', 'Szerkesztés most', { duration: 2500 })
-          .onAction().subscribe(() => {
-            window.open(`/admin/pages/${encodeURIComponent(key)}`, '_blank');
-          });
+        this.snack.open('Cikk létrehozva ✅', 'Modális szerkesztés', { duration: 2500 })
+          .onAction().subscribe(() => this.editModal(key));
         this.createForm.reset();
         this.loadPages();
       },
       error: () => this.snack.open('Létrehozás sikertelen ❌', undefined, { duration: 2500 })
+    });
+  }
+
+  editModal(key: string) {
+    this.dialog.open(PageEditDialogComponent, {
+      width: '980px',
+      maxWidth: '98vw',
+      data: { key }
+    }).afterClosed().subscribe(updated => {
+      if (updated) this.loadPages();
     });
   }
 }
