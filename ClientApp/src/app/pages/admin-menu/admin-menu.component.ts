@@ -35,7 +35,7 @@ type PageOption = { key: string; title: string };
     </header>
 
     <div class="columns">
-      <!-- Fő szerkesztő -->
+      <!-- Bal: szerkesztő -->
       <div class="tree-area">
         <div class="tree">
           <div class="root"
@@ -87,8 +87,10 @@ type PageOption = { key: string; title: string };
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- Tippek -->
+      <!-- Jobb: sticky Tippek -->
+      <aside class="help sticky-aside">
         <app-help-box
           [items]="[
             'Fogd meg a :: ikonnál és húzd a kívánt helyre (drag & drop).',
@@ -98,13 +100,18 @@ type PageOption = { key: string; title: string };
             'Mentés után a fejléc menü azonnal frissül.'
           ]">
         </app-help-box>
-      </div>
+      </aside>
     </div>
   </section>
   `,
   styles: [`
     .wrap{max-width:1200px;margin:1rem auto;padding:0 1rem}
-    .columns{display:block}
+    .columns{
+      display:grid;
+      grid-template-columns: 1fr 320px;
+      gap:1rem;
+      align-items:start;
+    }
     .tree-area{display:flex;flex-direction:column;gap:.75rem}
     .tree{border:1px solid #e6e6e6;border-radius:8px;background:#fff}
     .root, .children{min-height:2rem;padding:.75rem}
@@ -119,6 +126,11 @@ type PageOption = { key: string; title: string };
     .head-actions{display:flex;gap:.5rem}
     .sticky-top{position:sticky;top:0;z-index:5;background:#fff;padding:.5rem 0;border-bottom:1px solid #eee}
     .sticky-bottom{position:sticky;bottom:0;z-index:5;display:flex;justify-content:flex-end;gap:.5rem;padding:.5rem;border-top:1px solid #eee;background:rgba(255,255,255,.9);border-radius:0 0 8px 8px}
+    .sticky-aside{position:sticky; top:64px;} /* kb. a toolbar magassága; ha kell, finomítsd */
+    @media (max-width: 1024px){
+      .columns{grid-template-columns: 1fr}
+      .sticky-aside{position:static; top:auto}
+    }
   `]
 })
 export class AdminMenuComponent {
@@ -134,11 +146,9 @@ export class AdminMenuComponent {
   get childLists() { return this.tree.map(n => 'list-' + n.id); }
 
   constructor() {
-    // mindig a szolgáltatás által közzétett fát mutatjuk
     this.menu.tree$.subscribe(t => this.tree = t ?? []);
     this.menu.load();
 
-    // Oldalak a cikk-kapcsoláshoz
     this.http.get<PageOption[]>('/api/Pages')
       .subscribe(list => this.pages = list.map(p => ({ key: (p as any).key, title: (p as any).title || (p as any).key })));
   }
