@@ -2,14 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Infrastructure;
 using Domain.Entities;
+using Ganss.Xss;
 using PageEntity = Domain.Entities.Page;
 
 namespace Api.Controllers;
 
 public record PageDto(string Key, string Title, string Content, DateTime UpdatedUtc);
 public record UpdatePageDto(string Title, string Content);
-
-// ÚJ: admin listához – a menüpontok „útvonalát” is visszaadjuk (pl. "Üdvözöljük! / Rólunk...")
 public record PageWithMenuDto(string Key, string Title, DateTime UpdatedUtc, string[] MenuPaths);
 
 [ApiController]
@@ -17,7 +16,16 @@ public record PageWithMenuDto(string Key, string Title, DateTime UpdatedUtc, str
 public class PagesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public PagesController(AppDbContext db) => _db = db;
+    private readonly HtmlSanitizer _sanitizer = new();
+
+    public PagesController(AppDbContext db)
+    {
+        _db = db;
+        // (opcionális) finomhangolás: engedjük az 'img' src, alt
+        _sanitizer.AllowedTags.UnionWith(new[] { "img", "figure", "figcaption" });
+        _sanitizer.AllowedSchemes.Add("data"); // ha base64-es képeket is engednél (Quill alapból nem)
+        _sanitizer.AllowedAttributes.UnionWith(new[] { "src", "alt", "title" });
+    }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PageDto>>> List()
@@ -31,16 +39,14 @@ public class PagesController : ControllerBase
         return Ok(items);
     }
 
-    // ÚJ: Admin list – menühivatkozásokkal
     [HttpGet("admin-list")]
     public async Task<ActionResult<IEnumerable<PageWithMenuDto>>> AdminList()
     {
         var pages = await _db.Pages.AsNoTracking().OrderBy(p => p.Key).ToListAsync();
 
-        // összes menüpont a fa-útvonal kiszámításához
         var allMenu = await _db.MenuItems.AsNoTracking().ToListAsync();
         var byId = allMenu.ToDictionary(m => m.Id);
-        string BuildPath(Domain.Entities.MenuItem item)
+        string BuildPath(MenuItem item)
         {
             var parts = new List<string>();
             var cur = item;
@@ -54,7 +60,6 @@ public class PagesController : ControllerBase
             return string.Join(" / ", parts);
         }
 
-        // PageId -> menü pathok
         var pathsByPageId = allMenu
             .Where(m => m.PageId != null)
             .GroupBy(m => m.PageId!.Value)
@@ -79,7 +84,6 @@ public class PagesController : ControllerBase
         return Ok(dto);
     }
 
-    // PUT upsert
     [HttpPut("{key}")]
     public async Task<IActionResult> Update(string key, [FromBody] UpdatePageDto dto)
     {
@@ -91,7 +95,7 @@ public class PagesController : ControllerBase
         }
 
         page.Title = dto.Title ?? string.Empty;
-        page.Content = dto.Content ?? string.Empty;
+        page.Content = _sanitizer.Sanitize(dto.Content ?? string.Empty);
         page.UpdatedUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

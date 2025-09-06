@@ -27,7 +27,12 @@ export const routes: Routes = [
           import('./pages/admin-dashboard/admin-dashboard.component')
             .then(m => m.AdminDashboardComponent),
       },
-
+      {
+        path: 'menu',
+        loadComponent: () =>
+          import('./pages/admin-menu/admin-menu.component')
+            .then(m => m.AdminMenuComponent),
+      },
       // Oldalak (lista) + szerkesztő (ha használod)
       {
         path: 'pages',
