@@ -12,45 +12,54 @@ import { MenuNode, MenuService } from '../../services/menu.service';
   template: `
     <nav class="menu-bar" *ngIf="tree.length; else fallback">
       <ng-container *ngFor="let node of tree; trackBy: trackById">
-        <!-- root gomb a saját menüjével -->
+        <!-- Ha nincs gyereke és van pageKey: közvetlen link -->
         <button
+          *ngIf="node.children.length === 0 && node.pageKey; else hasChildren"
           mat-button
-          [matMenuTriggerFor]="menu"
-          [disabled]="!node.isEnabled && !node.children.length">
+          [routerLink]="['/pages', node.pageKey]"
+          [disabled]="!node.isEnabled">
           {{ node.label }}
         </button>
 
-        <mat-menu #menu="matMenu">
-          <ng-container *ngFor="let child of node.children; trackBy: trackById">
-            <!-- leaf elem: közvetlenül oldalra mutat -->
-            <button
-              mat-menu-item
-              *ngIf="!child.children.length"
-              [routerLink]="child.pageKey ? ['/pages', child.pageKey] : null"
-              [disabled]="!child.isEnabled || !child.pageKey">
-              {{ child.label }}
-            </button>
+        <!-- Egyébként menü -->
+        <ng-template #hasChildren>
+          <button
+            mat-button
+            [matMenuTriggerFor]="menu"
+            [disabled]="!node.isEnabled && !node.children.length">
+            {{ node.label }}
+          </button>
 
-            <!-- belső csomópont: további menü (3. szint opcionális) -->
-            <ng-container *ngIf="child.children.length">
+          <mat-menu #menu="matMenu">
+            <ng-container *ngFor="let child of node.children; trackBy: trackById">
               <button
                 mat-menu-item
-                [matMenuTriggerFor]="subMenu"
-                [disabled]="!child.isEnabled">
+                *ngIf="!child.children.length"
+                [routerLink]="child.pageKey ? ['/pages', child.pageKey] : null"
+                [disabled]="!child.isEnabled || !child.pageKey">
                 {{ child.label }}
               </button>
-              <mat-menu #subMenu="matMenu">
+
+              <ng-container *ngIf="child.children.length">
                 <button
                   mat-menu-item
-                  *ngFor="let grand of child.children; trackBy: trackById"
-                  [routerLink]="grand.pageKey ? ['/pages', grand.pageKey] : null"
-                  [disabled]="!grand.isEnabled || !grand.pageKey">
-                  {{ grand.label }}
+                  [matMenuTriggerFor]="subMenu"
+                  [disabled]="!child.isEnabled">
+                  {{ child.label }}
                 </button>
-              </mat-menu>
+                <mat-menu #subMenu="matMenu">
+                  <button
+                    mat-menu-item
+                    *ngFor="let grand of child.children; trackBy: trackById"
+                    [routerLink]="grand.pageKey ? ['/pages', grand.pageKey] : null"
+                    [disabled]="!grand.isEnabled || !grand.pageKey">
+                    {{ grand.label }}
+                  </button>
+                </mat-menu>
+              </ng-container>
             </ng-container>
-          </ng-container>
-        </mat-menu>
+          </mat-menu>
+        </ng-template>
       </ng-container>
     </nav>
 
