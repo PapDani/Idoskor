@@ -1,56 +1,110 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Infrastructure;
 using Domain.Entities;
-using Domain.Interfaces;
-using Api.DTOs;
+
+namespace Api.Controllers;
+
+public record CardDto(
+    int Id,
+    string Title,
+    string? ImageUrl,
+    string? ContentUrl,
+    string? PageKey,
+    DateTime CreatedUtc
+);
+
+public record UpsertCardDto(
+    string Title,
+    string? ImageUrl,
+    string? ContentUrl
+);
+
+public record SetCardPageDto(string? PageKey);
 
 [ApiController]
 [Route("api/[controller]")]
 public class CardsController : ControllerBase
 {
-    private readonly ICardService _cards;
-    public CardsController(ICardService cards) => _cards = cards;
+    private readonly AppDbContext _db;
+    public CardsController(AppDbContext db) => _db = db;
 
+    // LISTA – ÚJ: alapból a legújabb elöl
     [HttpGet]
-    public Task<IReadOnlyList<Card>> GetAll() => _cards.ListAsync();
-
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<ActionResult<IEnumerable<CardDto>>> List([FromQuery] string? order = "desc")
     {
-        var card = await _cards.GetByIdAsync(id);
-        return card is null ? NotFound() : Ok(card);
+        var q = _db.Cards.Include(c => c.Page).AsNoTracking();
+
+        // Ha nincs CreatedUtc a régi rekordokban, az Id DESC is megteszi – de CreatedUtc előnyben
+        var cards = (order?.ToLowerInvariant() == "asc"
+            ? q.OrderBy(c => c.CreatedUtc).ThenBy(c => c.Id)
+            : q.OrderByDescending(c => c.CreatedUtc).ThenByDescending(c => c.Id));
+
+        var result = await cards
+            .Select(c => new CardDto(c.Id, c.Title, c.ImageUrl, c.ContentUrl, c.Page != null ? c.Page.Key : null, c.CreatedUtc))
+            .ToListAsync();
+
+        return Ok(result);
     }
 
-    [HttpPost]
-    [Consumes("multipart/form-data")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<Card>> Create([FromForm] CreateCardForm form)
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<CardDto>> Get(int id)
     {
-        if (form.Image is null || form.Image.Length == 0)
-            return BadRequest("Image is required.");
+        var c = await _db.Cards.Include(x => x.Page).AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+        if (c is null) return NotFound();
 
-        var created = await _cards.CreateAsync(form.Title, form.ContentUrl, form.Image);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        return Ok(new CardDto(c.Id, c.Title, c.ImageUrl, c.ContentUrl, c.Page?.Key, c.CreatedUtc));
+    }
+
+    // (ha van create/update nálatok, maradhat – itt csak példa)
+    [HttpPost]
+    public async Task<ActionResult<CardDto>> Create([FromBody] UpsertCardDto dto)
+    {
+        var c = new Card
+        {
+            Title = dto.Title,
+            ImageUrl = dto.ImageUrl,
+            ContentUrl = dto.ContentUrl,
+            CreatedUtc = DateTime.UtcNow
+        };
+        _db.Cards.Add(c);
+        await _db.SaveChangesAsync();
+        return CreatedAtAction(nameof(Get), new { id = c.Id },
+            new CardDto(c.Id, c.Title, c.ImageUrl, c.ContentUrl, null, c.CreatedUtc));
     }
 
     [HttpPut("{id:int}")]
-    [Consumes("multipart/form-data")]
-    [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Update(int id, [FromForm] UpdateCardForm form)
+    public async Task<IActionResult> Update(int id, [FromBody] UpsertCardDto dto)
     {
-        var exists = await _cards.GetByIdAsync(id);
-        if (exists is null) return NotFound();
+        var c = await _db.Cards.FindAsync(id);
+        if (c is null) return NotFound();
 
-        await _cards.UpdateAsync(id, form.Title, form.ContentUrl, form.Image);
-
-        return NoContent(); // 204, nincs törzs
+        c.Title = dto.Title;
+        c.ImageUrl = dto.ImageUrl;
+        c.ContentUrl = dto.ContentUrl;
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 
-    [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Delete(int id)
+    // ÚJ: cikk hozzárendelés a kártyához (beállítás/törlés)
+    [HttpPut("{id:int}/page")]
+    public async Task<IActionResult> SetPage(int id, [FromBody] SetCardPageDto dto)
     {
-        await _cards.DeleteAsync(id);
+        var card = await _db.Cards.Include(x => x.Page).SingleOrDefaultAsync(x => x.Id == id);
+        if (card is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(dto.PageKey))
+        {
+            card.PageId = null; // leválasztás
+        }
+        else
+        {
+            var page = await _db.Pages.SingleOrDefaultAsync(p => p.Key == dto.PageKey);
+            if (page is null) return BadRequest("PageKey not found.");
+            card.PageId = page.Id;
+        }
+
+        await _db.SaveChangesAsync();
         return NoContent();
     }
 }

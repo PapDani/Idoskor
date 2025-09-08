@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { AuthGuard } from './guards/auth.guard';
-import { CardListComponent } from './pages/card-list/card-list.component';
+import { CardsComponent } from './pages/card-list/card-list.component';
 import { CardDetailComponent } from './pages/card-detail/card-detail.component';
 import { LoginComponent } from './pages/login/login.component';
 
@@ -70,7 +70,7 @@ export const routes: Routes = [
   },
 
   // Publikus kártyanézetek
-  { path: 'cards', component: CardListComponent },
+  { path: 'cards', component: CardsComponent },
   { path: 'cards/:id', component: CardDetailComponent },
 
   { path: '**', redirectTo: 'cards' },

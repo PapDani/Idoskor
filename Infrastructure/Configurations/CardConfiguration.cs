@@ -1,0 +1,25 @@
+using Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Infrastructure.Configurations;
+
+public class CardConfiguration : IEntityTypeConfiguration<Card>
+{
+    public void Configure(EntityTypeBuilder<Card> builder)
+    {
+        builder.Property(c => c.Title).HasMaxLength(200).IsRequired();
+        builder.Property(c => c.ImageUrl).HasMaxLength(2048);
+        builder.Property(c => c.ContentUrl).HasMaxLength(2048);
+
+        // ÚJ: alapértelmezett UTC idõ (SQL oldalon is)
+        builder.Property(c => c.CreatedUtc)
+               .HasDefaultValueSql("GETUTCDATE()");
+
+        // ÚJ: kapcsolat Page-hez (nullable), törlésnél NULL-ra áll
+        builder.HasOne(c => c.Page)
+               .WithMany()
+               .HasForeignKey(c => c.PageId)
+               .OnDelete(DeleteBehavior.SetNull);
+    }
+}

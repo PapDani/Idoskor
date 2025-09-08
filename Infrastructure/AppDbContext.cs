@@ -24,12 +24,6 @@ namespace Infrastructure
             base.OnModelCreating(b);
 
             b.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-
-            b.Entity<Card>().HasData(
-                new Card { Id = 1, Title = "Welcome", ImageUrl = "/images/welcome.jpg", ContentUrl = "/content/welcome" },
-                new Card { Id = 2, Title = "About Us", ImageUrl = "/images/about.jpg", ContentUrl = "/content/about" },
-                new Card { Id = 3, Title = "Contact", ImageUrl = "/images/contact.jpg", ContentUrl = "/content/contact" }
-            );
         }
     }
 }

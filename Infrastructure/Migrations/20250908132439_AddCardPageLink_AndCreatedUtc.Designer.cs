@@ -4,6 +4,7 @@ using Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250908132439_AddCardPageLink_AndCreatedUtc")]
+    partial class AddCardPageLink_AndCreatedUtc
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -56,6 +59,32 @@ namespace Infrastructure.Migrations
                     b.HasIndex("PageId");
 
                     b.ToTable("Cards");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ContentUrl = "/content/welcome",
+                            CreatedUtc = new DateTime(2025, 9, 8, 13, 24, 39, 218, DateTimeKind.Utc).AddTicks(1630),
+                            ImageUrl = "/images/welcome.jpg",
+                            Title = "Welcome"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            ContentUrl = "/content/about",
+                            CreatedUtc = new DateTime(2025, 9, 8, 13, 24, 39, 218, DateTimeKind.Utc).AddTicks(2435),
+                            ImageUrl = "/images/about.jpg",
+                            Title = "About Us"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            ContentUrl = "/content/contact",
+                            CreatedUtc = new DateTime(2025, 9, 8, 13, 24, 39, 218, DateTimeKind.Utc).AddTicks(2437),
+                            ImageUrl = "/images/contact.jpg",
+                            Title = "Contact"
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.MenuItem", b =>
@@ -67,7 +96,9 @@ namespace Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("IsEnabled")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -75,7 +106,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("Order")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int?>("PageId")
                         .HasColumnType("int");
@@ -93,7 +126,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("ParentId", "Order");
 
-                    b.ToTable("MenuItems");
+                    b.ToTable("MenuItems", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Page", b =>

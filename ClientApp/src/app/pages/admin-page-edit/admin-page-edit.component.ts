@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, NonNullableFormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { QuillModule, QuillModules } from 'ngx-quill';
 import Quill from 'quill';
 import DOMPurify from 'dompurify';
@@ -11,8 +12,12 @@ import { catchError, of } from 'rxjs';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { HelpBoxComponent } from '../../components/help-box/help-box.component';
 import { NewPageDialogComponent, NewPageDialogResult } from './new-page-dialog.component';
+
+type PageOption = { key: string; title: string };
 
 @Component({
   standalone: true,
@@ -20,12 +25,23 @@ import { NewPageDialogComponent, NewPageDialogResult } from './new-page-dialog.c
   imports: [
     CommonModule, ReactiveFormsModule, QuillModule,
     MatSnackBarModule, MatButtonModule, MatDialogModule,
+    MatFormFieldModule, MatSelectModule,
     HelpBoxComponent
   ],
   template: `
     <section class="wrap">
-      <header class="head">
-        <h1>Oldal szerkesztő</h1>
+      <header class="head sticky">
+        <div class="left">
+          <h1>Oldal szerkesztő</h1>
+
+          <mat-form-field appearance="outline" class="picker">
+            <mat-label>Cikk kiválasztása</mat-label>
+            <mat-select [value]="key" (selectionChange)="switchPage($event.value)">
+              <mat-option *ngFor="let p of pages" [value]="p.key">{{ p.title || p.key }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
         <div class="actions-top">
           <button mat-stroked-button type="button" (click)="openPublic()">Megnyitás (publikus)</button>
           <button mat-raised-button color="primary" type="button" (click)="newPage()">+ Új cikk</button>
@@ -34,11 +50,11 @@ import { NewPageDialogComponent, NewPageDialogResult } from './new-page-dialog.c
 
       <app-help-box
         [items]="[
-          'A cím és a tartalom módosítható, a Mentés gombbal elmentődik.',
+          'A legördülővel válaszd ki, melyik cikket szerkeszted.',
+          '„+ Új cikk” gombbal új kulcs/cím adható, az első Mentés hozza létre.',
           'Képet a képtool gombbal tölthetsz fel; a képek automatikusan beágyazódnak.',
-          'Új cikk létrehozásához kattints a + Új cikk gombra – nem navigálunk el, csak a kulcs és a cím áll be.',
-          'Mentés után az oldal azonnal elérhető lesz a /pages/<kulcs> címen.',
-          'Biztonság: a tartalom szerveroldalon is szűrve van (HTML sanitization).'
+          'Biztonság: a tartalom szerveroldalon is szűrve van (HTML sanitization).',
+          'Publikus megjelenítés: /pages/<kulcs>.'
         ]">
       </app-help-box>
 
@@ -66,10 +82,13 @@ import { NewPageDialogComponent, NewPageDialogResult } from './new-page-dialog.c
   `,
   styles: [`
     .wrap{max-width:1100px;margin:1rem auto;padding:0 1rem}
-    .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+    .head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:.5rem;gap:.75rem}
+    .sticky{position:sticky;top:0;z-index:5;background:#fff;padding:.5rem 0;border-bottom:1px solid #eee}
+    .left{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+    .picker{min-width:280px}
     .actions-top{display:flex;gap:.5rem;align-items:center}
     .page-form { display: grid; gap: 1rem; }
-    .meta{display:flex;gap:1rem;align-items:center}
+    .meta{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
     .title-input { flex:1 1 auto; padding: .6rem .8rem; font-size: 1.1rem; border: 1px solid #ddd; border-radius: 6px; }
     .key-line{font-size:.95rem;color:#555}
     .key-line code{background:#f5f5f5;padding:.1rem .3rem;border-radius:4px}
@@ -80,15 +99,18 @@ import { NewPageDialogComponent, NewPageDialogResult } from './new-page-dialog.c
   `]
 })
 export class AdminPageEditComponent {
-  private pages = inject(PagesService);
+  private pagesApi = inject(PagesService);
   private uploads = inject(UploadsService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private http = inject(HttpClient);
   private fb = inject(NonNullableFormBuilder);
   private snack = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
+  pages: PageOption[] = [];
   key = this.route.snapshot.paramMap.get('key') ?? 'about';
+
   form = this.fb.group({
     title: this.fb.control('', { validators: [Validators.required] }),
     content: this.fb.control('')
@@ -105,36 +127,39 @@ export class AdminPageEditComponent {
         ['link', 'image'],
         ['clean']
       ],
-      handlers: {
-        image: () => this.handleImage()
-      }
+      handlers: { image: () => this.handleImage() }
     }
   };
 
-  onEditorCreated(editor: Quill): void {
-    this.editor = editor;
-  }
+  onEditorCreated(editor: Quill): void { this.editor = editor; }
 
   constructor() {
+    // page lista a választóhoz
+    this.http.get<PageOption[]>('/api/Pages')
+      .subscribe(list => this.pages = list.map(p => ({ key: (p as any).key, title: (p as any).title || (p as any).key })));
+
     this.loadCurrent();
   }
 
   private loadCurrent(): void {
-    this.pages.get(this.key)
+    this.pagesApi.get(this.key)
       .pipe(
-        catchError(err => {
-          if (err?.status === 404) {
-            return of({ key: this.key, title: '', content: '' } as PageDto);
-          }
-          throw err;
-        })
+        catchError(err => err?.status === 404
+          ? of({ key: this.key, title: '', content: '' } as PageDto)
+          : of(null))
       )
-      .subscribe((p: PageDto) => {
-        this.form.patchValue({
-          title: p.title ?? '',
-          content: p.content ?? ''
-        });
+      .subscribe((p: PageDto | null) => {
+        if (!p) return;
+        this.form.patchValue({ title: p.title ?? '', content: p.content ?? '' });
       });
+  }
+
+  switchPage(newKey: string): void {
+    if (!newKey || newKey === this.key) return;
+    this.key = newKey;
+    this.router.navigate(['../', newKey], { relativeTo: this.route, replaceUrl: true });
+    this.form.reset({ title: '', content: '' });
+    this.loadCurrent();
   }
 
   newPage(): void {
@@ -144,26 +169,23 @@ export class AdminPageEditComponent {
     });
     ref.afterClosed().subscribe((res) => {
       if (!res) return;
-      // 1) állítsuk be lokálisan az új kulcsot és cím/üres tartalmat
       this.key = res.key;
       this.form.reset({ title: res.title, content: '' });
-
-      // 2) (opcionális) URL frissítése az új kulcsra, hogy F5 után is erre nyíljon
       this.router.navigate(['../', this.key], { relativeTo: this.route, replaceUrl: true });
-
-      // 3) menteni nem muszáj azonnal – a felhasználó ráér megnyomni a Mentés gombot
       this.snack.open(`Új cikk előkészítve: ${this.key} — nyomj Mentést a létrehozáshoz`, undefined, { duration: 2500 });
+      // Frissítsük a választó listát is, ha új kulcs
+      if (!this.pages.find(p => p.key === this.key)) {
+        this.pages = [{ key: this.key, title: res.title || this.key }, ...this.pages];
+      }
     });
   }
 
   private handleImage(): void {
     if (!this.editor) return;
     const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
+    input.type = 'file'; input.accept = 'image/*';
     input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
+      const file = input.files?.[0]; if (!file) return;
       this.uploads.uploadImage(file).subscribe((url: string) => {
         const range = this.editor!.getSelection(true);
         const index = range ? range.index : (this.editor!.getLength() || 0);
@@ -180,7 +202,7 @@ export class AdminPageEditComponent {
     const raw = this.form.getRawValue();
     const cleanHtml: string = DOMPurify.sanitize(raw.content ?? '');
 
-    this.pages.update(this.key, {
+    this.pagesApi.update(this.key, {
       title: raw.title ?? '',
       content: cleanHtml
     }).subscribe({
@@ -195,7 +217,5 @@ export class AdminPageEditComponent {
     });
   }
 
-  openPublic(): void {
-    window.open(`/pages/${encodeURIComponent(this.key)}`, '_blank');
-  }
+  openPublic(): void { window.open(`/pages/${encodeURIComponent(this.key)}`, '_blank'); }
 }

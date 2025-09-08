@@ -4,14 +4,16 @@ import { ActivatedRoute } from '@angular/router';
 import { PagesService, PageDto } from '../../services/page.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { map, switchMap, catchError, of, Observable } from 'rxjs';
+import { RouterLink } from '@angular/router';
 
 type ViewModel = { title: string; html: SafeHtml };
 
 @Component({
   standalone: true,
   selector: 'app-public-page',
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
+  <button mat-stroked-button routerLink="/cards" class="back-to-cards">← Vissza a hírekhez</button>
     <ng-container *ngIf="vm$ | async as vm; else notFound">
       <h1 class="page-title">{{ vm.title }}</h1>
       <article class="page-content" [innerHTML]="vm.html"></article>

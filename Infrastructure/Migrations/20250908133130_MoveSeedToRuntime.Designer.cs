@@ -4,6 +4,7 @@ using Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250908133130_MoveSeedToRuntime")]
+    partial class MoveSeedToRuntime
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -56,6 +59,32 @@ namespace Infrastructure.Migrations
                     b.HasIndex("PageId");
 
                     b.ToTable("Cards");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ContentUrl = "/content/welcome",
+                            CreatedUtc = new DateTime(2025, 9, 8, 13, 31, 30, 508, DateTimeKind.Utc).AddTicks(3297),
+                            ImageUrl = "/images/welcome.jpg",
+                            Title = "Welcome"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            ContentUrl = "/content/about",
+                            CreatedUtc = new DateTime(2025, 9, 8, 13, 31, 30, 508, DateTimeKind.Utc).AddTicks(4199),
+                            ImageUrl = "/images/about.jpg",
+                            Title = "About Us"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            ContentUrl = "/content/contact",
+                            CreatedUtc = new DateTime(2025, 9, 8, 13, 31, 30, 508, DateTimeKind.Utc).AddTicks(4201),
+                            ImageUrl = "/images/contact.jpg",
+                            Title = "Contact"
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.MenuItem", b =>
