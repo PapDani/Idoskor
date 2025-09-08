@@ -1,6 +1,7 @@
 <mat-toolbar color="primary" class="header-toolbar">
   <span class="cursor-pointer" (click)="goHome()">Aktív Időskor</span>
   <button mat-button routerLink="/cards" class="news-left">Hírek</button>
+  <button mat-button routerLink="/gallery" class="news-left">Galéria</button>
   <span class="spacer"></span>
 
   <!-- Nem admin -->
@@ -15,6 +16,7 @@
     <button mat-button routerLink="/admin/pages/about">Oldal szerkesztő (Quill)</button>
     <button mat-button routerLink="/admin/pages">Oldalak (lista)</button>
     <button mat-button routerLink="/admin/menu">Menü szerkesztő</button>
+    <button mat-button routerLink="/admin/gallery">Galéria szerkesztő</button>
     <button mat-button (click)="logout()">Kijelentkezés</button>
   </ng-container>
 </mat-toolbar>
