@@ -18,6 +18,9 @@ namespace Infrastructure
         public DbSet<Card> Cards { get; set; } = null!;
         public DbSet<Page> Pages => Set<Page>();
         public DbSet<MenuItem> MenuItems => Set<MenuItem>();
+        public DbSet<Album> Albums => Set<Album>();
+        public DbSet<Photo> Photos => Set<Photo>();
+
 
         protected override void OnModelCreating(ModelBuilder b)
         {

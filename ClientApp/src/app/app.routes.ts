@@ -28,6 +28,11 @@ export const routes: Routes = [
             .then(m => m.AdminDashboardComponent),
       },
       {
+        path: 'gallery',
+        loadComponent: () => import('./pages/admin-gallery/admin-gallery.component')
+          .then(m => m.AdminGalleryComponent),
+      },
+      {
         path: 'menu',
         loadComponent: () =>
           import('./pages/admin-menu/admin-menu.component')
@@ -72,6 +77,9 @@ export const routes: Routes = [
   // Publikus kártyanézetek
   { path: 'cards', component: CardsComponent },
   { path: 'cards/:id', component: CardDetailComponent },
+
+  { path: 'gallery', loadComponent: () => import('./pages/gallery/album-list.component').then(m => m.AlbumListComponent) },
+  { path: 'gallery/:slug', loadComponent: () => import('./pages/gallery/album-detail.component').then(m => m.AlbumDetailComponent) },
 
   { path: '**', redirectTo: 'cards' },
 ];
