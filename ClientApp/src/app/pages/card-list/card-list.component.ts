@@ -1,58 +1,41 @@
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
-import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatGridListModule } from '@angular/material/grid-list';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { RouterModule } from '@angular/router';
-import { CardService } from '../../services/card.service';
-import type { Card } from '../../api';
+import { RouterLink } from '@angular/router';
+import { CardService, Card } from '../../services/card.service';
 
 @Component({
-  selector: 'app-card-list',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    MatGridListModule,
-    MatCardModule,
-    MatButtonModule
-  ],
-  templateUrl: './card-list.component.html',
-  styleUrls: ['./card-list.component.scss']
+  selector: 'app-cards',
+  imports: [CommonModule, RouterLink],
+  template: `
+    <section class="cards">
+      <ng-container *ngFor="let c of cards">
+        <!-- Ha van cikk hozzárendelve: direkt /pages/:key -->
+        <a *ngIf="c.pageKey; else gotoDetail" [routerLink]="['/pages', c.pageKey]" class="card">
+          <img *ngIf="c.imageUrl" [src]="c.imageUrl" alt="{{ c.title }}">
+          <h3>{{ c.title }}</h3>
+        </a>
+        <!-- Ha nincs cikk: /cards/:id részlet -->
+        <ng-template #gotoDetail>
+          <a [routerLink]="['/cards', c.id]" class="card">
+            <img *ngIf="c.imageUrl" [src]="c.imageUrl" alt="{{ c.title }}">
+            <h3>{{ c.title }}</h3>
+          </a>
+        </ng-template>
+      </ng-container>
+    </section>
+  `,
+  styles: [`
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem}
+    .card{border:1px solid #eee;border-radius:8px;padding:.5rem;display:block;text-decoration:none;color:inherit}
+    .card img{width:100%;height:160px;object-fit:cover;border-radius:6px}
+  `]
 })
-export class CardListComponent implements OnInit {
+export class CardsComponent {
+  private cardsApi = inject(CardService);
   cards: Card[] = [];
-  cols$!: Observable<number>;
-  
-  constructor(
-    private cs: CardService,
-    private bp: BreakpointObserver,
-    private router: Router
-  ) { }
 
-  ngOnInit() {
-    this.cs.getCards().subscribe(cards => this.cards = cards);
-
-    this.cols$ = this.bp.observe([
-      Breakpoints.XSmall,
-      Breakpoints.Small,
-      Breakpoints.Medium,
-      Breakpoints.Large
-    ]).pipe(
-      map(result => {
-        if (result.breakpoints[Breakpoints.XSmall]) return 1;
-        if (result.breakpoints[Breakpoints.Small]) return 2;
-        if (result.breakpoints[Breakpoints.Medium]) return 3;
-        return 4;
-      })
-    );
-  }
-
-  goDetail(id: number) {
-    this.router.navigate(['/cards', id]);
+  ngOnInit(): void {
+    this.cardsApi.list('desc').subscribe(list => this.cards = list);
   }
 }

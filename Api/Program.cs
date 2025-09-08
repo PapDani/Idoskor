@@ -78,8 +78,7 @@ app.UseAuthorization();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-    await DbSeeder.EnsureSeededAsync(db);
+    await DbSeeder.SeedAsync(db);
 }
 
 // Controller routolás
