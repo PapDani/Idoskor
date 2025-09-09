@@ -6,13 +6,14 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { CardService, Card } from '../../services/card.service';
+import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 type PageOption = { key: string; title: string };
 
 @Component({
   standalone: true,
   selector: 'app-admin-cards',
-  imports: [CommonModule, MatSelectModule, MatButtonModule, MatSnackBarModule, RouterLink],
+  imports: [CommonModule, MatSelectModule, MatButtonModule, MatSnackBarModule, RouterLink, DragDropModule],
   templateUrl: './admin-card-list.component.html'
 })
 export class AdminCardsComponent {
@@ -32,7 +33,18 @@ export class AdminCardsComponent {
   }
 
   reload() {
-    this.cardsApi.list('desc').subscribe(list => this.cards = list);
+    // Adminban manuális rend szerint kérjük
+    this.cardsApi.list('asc', 'manual').subscribe(list => this.cards = list);
+  }
+
+  // Drag&drop callback
+  drop(event: CdkDragDrop<Card[]>) {
+    moveItemInArray(this.cards, event.previousIndex, event.currentIndex);
+    const payload = this.cards.map((c, idx) => ({ id: c.id, order: idx }));
+    this.cardsApi.reorder(payload).subscribe({
+      next: () => this.snack.open('Sorrend mentve ✅', undefined, { duration: 1200 }),
+      error: () => this.snack.open('Sorrend mentése sikertelen ❌', undefined, { duration: 2000 })
+    });
   }
 
   setPage(card: Card, key: string | null) {
@@ -58,4 +70,6 @@ export class AdminCardsComponent {
       error: () => this.snack.open('Törlés sikertelen ❌', undefined, { duration: 2500 })
     });
   }
+
+  trackId = (_: number, c: Card) => c.id;
 }

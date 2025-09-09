@@ -16,7 +16,7 @@ type Data = { photos: Photo[]; index: number; albumTitle: string };
     <button class="close" (click)="close($event)" aria-label="Bezárás">×</button>
 
     <div class="inner" (click)="$event.stopPropagation()">
-      <img [src]="current.imageUrl" [alt]="current.title || data.albumTitle" class="photo">
+      <img [src]="displayUrl" [alt]="current.title || data.albumTitle" class="photo">
       <div class="bar">
         <div class="title">{{ current.title || data.albumTitle }}</div>
         <div class="index">{{ i+1 }} / {{ data.photos.length }}</div>
@@ -52,7 +52,18 @@ export class PhotoViewerDialogComponent {
     this.i = Math.min(Math.max(0, data.index ?? 0), data.photos.length - 1);
   }
 
-  get current(): Photo { return this.data.photos[this.i]; }
+  get current(): Photo {
+    return this.data.photos[this.i];
+  }
+  get displayUrl(): string {
+    const url = this.current.imageUrl;
+    // ha van w1600 a mintának megfelelően, azt használjuk a lightboxban
+    const m = url.match(/_w(\d+)\.(webp|jpe?g|png)$/i);
+    if (m) {
+      return url.replace(/_w\d+\.(webp|jpe?g|png)$/i, '_w1600.webp');
+    }
+    return url;
+  }
 
   next(ev?: Event) { ev?.stopPropagation(); this.i = (this.i + 1) % this.data.photos.length; this.preloadNeighbor(); }
   prev(ev?: Event) { ev?.stopPropagation(); this.i = (this.i - 1 + this.data.photos.length) % this.data.photos.length; this.preloadNeighbor(); }

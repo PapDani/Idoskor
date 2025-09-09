@@ -22,6 +22,9 @@ public record UpsertCardDto(
 
 public record SetCardPageDto(string? PageKey);
 
+// ⬇️ Egyedi név: NEM ütközik más controllerekkel
+public record CardReorderDto(int Id, int Order);
+
 [ApiController]
 [Route("api/[controller]")]
 public class CardsController : ControllerBase
@@ -29,19 +32,24 @@ public class CardsController : ControllerBase
     private readonly AppDbContext _db;
     public CardsController(AppDbContext db) => _db = db;
 
-    // LISTA – ÚJ: alapból a legújabb elöl
+    // LISTA – sort: "created" (alap) vagy "manual" (admin DnD)
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CardDto>>> List([FromQuery] string? order = "desc")
+    public async Task<ActionResult<IEnumerable<CardDto>>> List(
+        [FromQuery] string? order = "desc",
+        [FromQuery] string? sort = "created")
     {
         var q = _db.Cards.Include(c => c.Page).AsNoTracking();
 
-        // Ha nincs CreatedUtc a régi rekordokban, az Id DESC is megteszi – de CreatedUtc előnyben
-        var cards = (order?.ToLowerInvariant() == "asc"
-            ? q.OrderBy(c => c.CreatedUtc).ThenBy(c => c.Id)
-            : q.OrderByDescending(c => c.CreatedUtc).ThenByDescending(c => c.Id));
+        IOrderedQueryable<Card> ordered = string.Equals(sort, "manual", StringComparison.OrdinalIgnoreCase)
+            ? q.OrderBy(c => c.Order).ThenBy(c => c.Id)
+            : (order?.ToLowerInvariant() == "asc"
+                ? q.OrderBy(c => c.CreatedUtc).ThenBy(c => c.Id)
+                : q.OrderByDescending(c => c.CreatedUtc).ThenByDescending(c => c.Id));
 
-        var result = await cards
-            .Select(c => new CardDto(c.Id, c.Title, c.ImageUrl, c.ContentUrl, c.Page != null ? c.Page.Key : null, c.CreatedUtc))
+        var result = await ordered
+            .Select(c => new CardDto(
+                c.Id, c.Title, c.ImageUrl, c.ContentUrl,
+                c.Page != null ? c.Page.Key : null, c.CreatedUtc))
             .ToListAsync();
 
         return Ok(result);
@@ -50,13 +58,14 @@ public class CardsController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<CardDto>> Get(int id)
     {
-        var c = await _db.Cards.Include(x => x.Page).AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+        var c = await _db.Cards.Include(x => x.Page).AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == id);
         if (c is null) return NotFound();
 
-        return Ok(new CardDto(c.Id, c.Title, c.ImageUrl, c.ContentUrl, c.Page?.Key, c.CreatedUtc));
+        return Ok(new CardDto(
+            c.Id, c.Title, c.ImageUrl, c.ContentUrl, c.Page?.Key, c.CreatedUtc));
     }
 
-    // (ha van create/update nálatok, maradhat – itt csak példa)
     [HttpPost]
     public async Task<ActionResult<CardDto>> Create([FromBody] UpsertCardDto dto)
     {
@@ -69,6 +78,7 @@ public class CardsController : ControllerBase
         };
         _db.Cards.Add(c);
         await _db.SaveChangesAsync();
+
         return CreatedAtAction(nameof(Get), new { id = c.Id },
             new CardDto(c.Id, c.Title, c.ImageUrl, c.ContentUrl, null, c.CreatedUtc));
     }
@@ -86,7 +96,7 @@ public class CardsController : ControllerBase
         return NoContent();
     }
 
-    // ÚJ: cikk hozzárendelés a kártyához (beállítás/törlés)
+    // Cikk hozzárendelés / leválasztás
     [HttpPut("{id:int}/page")]
     public async Task<IActionResult> SetPage(int id, [FromBody] SetCardPageDto dto)
     {
@@ -103,6 +113,22 @@ public class CardsController : ControllerBase
             if (page is null) return BadRequest("PageKey not found.");
             card.PageId = page.Id;
         }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // Drag&drop sorrend mentése (admin)
+    [HttpPost("reorder")]
+    public async Task<IActionResult> Reorder([FromBody] List<CardReorderDto> items)
+    {
+        if (items is null || items.Count == 0) return BadRequest();
+
+        var ids = items.Select(i => i.Id).ToHashSet();
+        var cards = await _db.Cards.Where(c => ids.Contains(c.Id)).ToListAsync();
+
+        foreach (var c in cards)
+            c.Order = items.First(i => i.Id == c.Id).Order;
 
         await _db.SaveChangesAsync();
         return NoContent();

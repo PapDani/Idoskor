@@ -23,8 +23,15 @@ export class CardService {
   private base = '/api/Cards';
 
   // Lista (DESC a legújabb elöl)
-  list(order: 'asc' | 'desc' = 'desc'): Observable<Card[]> {
-    return this.http.get<Card[]>(`${this.base}?order=${order}`);
+  list(order: 'asc' | 'desc' = 'desc', sort: 'created' | 'manual' = 'created'): Observable<Card[]> {
+    const params = new URLSearchParams();
+    params.set('order', order);
+    params.set('sort', sort);
+    return this.http.get<Card[]>(`${this.base}?${params.toString()}`);
+  }
+
+  reorder(items: { id: number; order: number }[]): Observable<void> {
+    return this.http.post<void>(`${this.base}/reorder`, items);
   }
 
   // Részlet

@@ -13,4 +13,6 @@ public class Card
     // ÚJ: cikk hozzárendelés (Page)
     public int? PageId { get; set; }
     public Page? Page { get; set; }
+
+    public int Order { get; set; } = 0;
 }

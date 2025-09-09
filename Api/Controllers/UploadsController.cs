@@ -1,32 +1,56 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Api.Services;
+using Microsoft.AspNetCore.Mvc;
 
-public record FileUploadRequest(IFormFile File);
+namespace Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 public class UploadsController : ControllerBase
 {
     private readonly IWebHostEnvironment _env;
-    public UploadsController(IWebHostEnvironment env) => _env = env;
+    private readonly ImageVariantService _variants;
 
-    [HttpPost]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(20_000_000)] // 20 MB – igény szerint
-    public async Task<IActionResult> Upload([FromForm] FileUploadRequest request)
+    public UploadsController(IWebHostEnvironment env, ImageVariantService variants)
     {
-        if (request.File == null || request.File.Length == 0)
-            return BadRequest("No file provided.");
+        _env = env;
+        _variants = variants;
+    }
 
-        var imagesDir = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "images");
-        Directory.CreateDirectory(imagesDir);
+    // MEGLÉVŐ: egyszerű feltöltés – egyetlen URL-t ad vissza (visszafelé kompatibilitás)
+    [HttpPost("image")]
+    [RequestSizeLimit(30_000_000)]
+    public async Task<ActionResult<string>> UploadImage(IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) return BadRequest("No file");
+        var guid = Guid.NewGuid().ToString("N");
+        var now = DateTime.UtcNow;
+        var relBase = $"/uploads/{now:yyyy}/{now:MM}/";
+        var absBase = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"),
+            "uploads", now.ToString("yyyy"), now.ToString("MM"));
+        Directory.CreateDirectory(absBase);
 
-        var ext = Path.GetExtension(request.File.FileName);
-        var name = $"{Guid.NewGuid():N}{ext}";
-        var path = Path.Combine(imagesDir, name);
-        using (var stream = System.IO.File.Create(path))
-            await request.File.CopyToAsync(stream);
+        var ext = Path.GetExtension(file.FileName);
+        var rel = $"{relBase}{guid}{ext}";
+        var abs = Path.Combine(absBase, $"{guid}{ext}");
+        using (var fs = System.IO.File.Create(abs))
+            await file.CopyToAsync(fs, ct);
 
-        var url = $"/images/{name}";
-        return Ok(new { url });
+        return Ok(rel);
+    }
+
+    // ÚJ: variánsokat készít (WebP 320/640/1024/1600) és mindegyik URL-t visszaadja
+    public record VariantResponse(string original, string w320, string w640, string w1024, string? w1600);
+
+    [HttpPost("image-variants")]
+    [RequestSizeLimit(30_000_000)]
+    public async Task<ActionResult<VariantResponse>> UploadImageVariants(IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) return BadRequest("No file");
+        await using var ms = new MemoryStream();
+        await file.CopyToAsync(ms, ct);
+        ms.Position = 0;
+
+        var result = await _variants.SaveWithVariantsAsync(ms, file.FileName, ct);
+        return Ok(new VariantResponse(result.OriginalUrl, result.W320Url, result.W640Url, result.W1024Url, result.W1600Url));
     }
 }

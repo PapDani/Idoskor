@@ -1,10 +1,12 @@
 using Api.Filters;
+using Api.Services;
 using Domain.Interfaces;
 using Infrastructure;
 using Infrastructure.Repositories;
 using Infrastructure.Seed;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -22,6 +24,7 @@ builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IPageRepository, PageRepository>();
 builder.Services.AddScoped<IPageService, PageService>();
+builder.Services.AddSingleton<ImageVariantService>();
 
 // 3. Controller szolgáltatás
 builder.Services.AddControllers();
@@ -37,6 +40,10 @@ builder.Services.AddSwaggerGen(c =>
 // 5. CORS
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod()));
+
+//Kártyák miatt
+var provider = new FileExtensionContentTypeProvider();
+provider.Mappings[".webp"] = "image/webp";
 
 // 6. Authentication / Authorization
 //JWT beállítások betöltése
@@ -81,9 +88,10 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(db);
 }
 
+//app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = provider });
+
 // Controller routolás
 app.MapControllers();
-
-app.UseStaticFiles();
 
 app.Run();

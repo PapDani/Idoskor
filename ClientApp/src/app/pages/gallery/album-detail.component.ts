@@ -9,7 +9,7 @@ import { PhotoViewerDialogComponent } from './photo-viewer-dialog.component';
 @Component({
   standalone: true,
   selector: 'app-album-detail',
-  imports: [CommonModule, RouterLink, MatDialogModule, LazyImageDirective, PhotoViewerDialogComponent],
+  imports: [CommonModule, RouterLink, MatDialogModule, LazyImageDirective],
   template: `
   <section class="wrap" *ngIf="album">
     <div class="head">
@@ -20,7 +20,11 @@ import { PhotoViewerDialogComponent } from './photo-viewer-dialog.component';
 
     <div class="masonry" *ngIf="album.photos?.length; else none">
       <figure class="item" *ngFor="let p of album.photos; let i = index" (click)="openViewer(i)">
-        <img [appLazyImage]="p.imageUrl" [alt]="p.title || album.title">
+        <img
+          [attr.srcset]="srcsetFor(p.imageUrl) || null"
+          [attr.sizes]="srcsetFor(p.imageUrl) ? sizesAttr : null"
+          [appLazyImage]="p.imageUrl"
+          [alt]="p.title || album.title">
         <figcaption *ngIf="p.title">{{ p.title }}</figcaption>
       </figure>
     </div>
@@ -68,4 +72,25 @@ export class AlbumDetailComponent {
       autoFocus: false
     });
   }
+
+  srcsetFor(url: string): string | null {
+    // Ha a fájlnév végén _wNNN.webp mintát találunk, generálunk más variánsokat is
+    const m = url.match(/_w(\d+)\.(webp|jpe?g|png)$/i);
+    if (!m) return null;
+
+    const base = url.replace(/_w\d+\.(webp|jpe?g|png)$/i, '');
+    const ext = url.endsWith('.webp') ? 'webp' : 'webp'; // kényszerítjük webpre
+    const make = (w: number) => `${base}_w${w}.${ext}`;
+
+    const set = [
+      `\${make(320)} 320w`,
+      `\${make(640)} 640w`,
+      `\${make(1024)} 1024w`,
+      `\${make(1600)} 1600w`
+    ];
+    return set.join(', ');
+  }
+
+  sizesAttr = '(min-width: 1200px) 25vw, (min-width: 900px) 33vw, (min-width: 600px) 50vw, 100vw';
+
 }

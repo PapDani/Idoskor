@@ -216,7 +216,11 @@ export class AdminGalleryComponent {
 
     const tasks: Promise<{ imageUrl: string }>[] = Array.from(files).map(f =>
       new Promise<{ imageUrl: string }>(resolve => {
-        this.upload.uploadImage(f).subscribe((url: string) => resolve({ imageUrl: url }));
+        this.upload.uploadImageVariants(f).subscribe(vars => {
+          // A DB-be a megjelenítéshez optimális 1024px-es WebP-t tesszük,
+          // lightboxban ez is bőven elég lesz – de később válthatunk w1600-ra.
+          resolve({ imageUrl: vars.w1024 || vars.w640 || vars.original });
+        });
       })
     );
 
@@ -224,12 +228,14 @@ export class AdminGalleryComponent {
       this.gallery.addPhotos(this.selectedDetail!.id, items).subscribe({
         next: () => {
           this.snack.open('Képek hozzáadva ✅', undefined, { duration: 1500 });
+          // újratöltjük az album részletét
           this.selectAlbum(this.albums.find(a => a.id === this.selectedDetail!.id)!);
         },
         error: () => this.snack.open('Feltöltés sikertelen ❌', undefined, { duration: 2500 })
       });
     });
   }
+
 
   reorderPhotos(event: CdkDragDrop<Photo[]>) {
     if (!this.selectedDetail) return;
