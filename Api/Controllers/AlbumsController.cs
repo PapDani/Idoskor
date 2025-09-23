@@ -11,7 +11,7 @@ public record PhotoDto(int Id, string ImageUrl, string? Title, string? Descripti
 
 public record CreateAlbumDto(string Title, string Slug, string? Description);
 public record UpdateAlbumDto(string Title, string Slug, string? Description, bool IsPublished);
-public record ReorderDto(int Id, int Order);
+public record AlbumReorderDto(int Id, int Order);
 public record SetCoverDto(int PhotoId);
 public record AddPhotosDto(List<NewPhoto> Photos);
 public record NewPhoto(string ImageUrl, string? Title, string? Description);
@@ -124,7 +124,7 @@ public class AlbumsController : ControllerBase
     }
 
     [HttpPost("reorder")]
-    public async Task<IActionResult> Reorder([FromBody] List<ReorderDto> items)
+    public async Task<IActionResult> Reorder([FromBody] List<AlbumReorderDto> items)
     {
         var ids = items.Select(i => i.Id).ToHashSet();
         var albums = await _db.Albums.Where(a => ids.Contains(a.Id)).ToListAsync();
@@ -171,7 +171,7 @@ public class AlbumsController : ControllerBase
     }
 
     [HttpPost("{id:int}/photos/reorder")]
-    public async Task<IActionResult> ReorderPhotos(int id, [FromBody] List<ReorderDto> items)
+    public async Task<IActionResult> ReorderPhotos(int id, [FromBody] List<AlbumReorderDto> items)
     {
         var ids = items.Select(i => i.Id).ToHashSet();
         var photos = await _db.Photos.Where(p => p.AlbumId == id && ids.Contains(p.Id)).ToListAsync();

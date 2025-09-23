@@ -1,0 +1,23 @@
+<div class="pv-wrap" (click)="next()">
+  <div class="pv-topbar" (click)="$event.stopPropagation()">
+    <button mat-icon-button (click)="close()" aria-label="Bezárás">
+      <mat-icon>close</mat-icon>
+    </button>
+    <div class="pv-counter">{{ index + 1 }} / {{ photos.length }}</div>
+    <div class="pv-spacer"></div>
+    <div class="mr-2">{{ title() }}</div>
+  </div>
+
+  <img class="pv-img"
+       [src]="photoUrl(current())"
+       [attr.srcset]="photoSrcset(current())"
+       sizes="100vw"
+       [alt]="title()">
+
+  <div class="pv-ctrl pv-prev" (click)="$event.stopPropagation(); prev()">
+    <mat-icon>chevron_left</mat-icon>
+  </div>
+  <div class="pv-ctrl pv-next" (click)="$event.stopPropagation(); next()">
+    <mat-icon>chevron_right</mat-icon>
+  </div>
+</div>

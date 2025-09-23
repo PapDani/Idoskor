@@ -8,5 +8,11 @@
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
+  },
+  "/uploads": {
+    "target": "http://127.0.0.1:5125",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
   }
 }

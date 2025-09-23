@@ -1,80 +1,133 @@
-<div class="max-w-md mx-auto p-4">
-  <h2 class="text-xl mb-4">
-    {{ isEdit ? 'Edit Card' : 'New Card' }}
-  </h2>
+<section class="wrap">
+  <div class="head">
+    <h1>{{ isEdit ? 'Kártya szerkesztése' : 'Új kártya' }}</h1>
+    <button mat-button type="button" (click)="goBack()">← Vissza a listához</button>
+  </div>
 
-  <button mat-button
-          color="accent"
-          (click)="goBack()">
-    ← Back to list
-  </button>
+  <div class="layout">
+    <!-- Bal: űrlap -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="form">
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Cím</mat-label>
+        <input matInput formControlName="title" placeholder="Kártya címe" required>
+      </mat-form-field>
 
-  <div class="form-preview-container">
-    <div class="form-column">
-      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Kép URL</mat-label>
+        <input matInput formControlName="imageUrl" placeholder="/uploads/...">
+      </mat-form-field>
 
-        <!-- TITLE -->
-        <mat-form-field appearance="fill" class="w-full mb-4">
-          <mat-label>Title</mat-label>
-          <input matInput formControlName="title" placeholder="Enter card title">
-          <mat-error *ngIf="form.controls['title'].invalid && form.controls['title'].touched">
-            Title is required
-          </mat-error>
-        </mat-form-field>
+      <div class="upload">
+        <label class="lbl">Kép feltöltése</label>
+        <input type="file" accept="image/*" (change)="onFileChange($event)">
+        <small class="muted">Fájl kiválasztásakor feltöltjük, és automatikusan kitöltjük a „Kép URL” mezőt.</small>
+      </div>
 
-        <!-- IMAGE FILE -->
-        <div class="mb-4">
-          <mat-label>Image File</mat-label>
-          <input type="file"
-                 (change)="onFileSelected($event)"
-                 accept="image/*"
-                 class="w-full block" />
-          <mat-error *ngIf="fileTouched && !selectedFile">
-            Image is required
-          </mat-error>
-        </div>
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Külső link (opcionális)</mat-label>
+        <textarea matInput rows="3" formControlName="contentUrl" placeholder="https://..."></textarea>
+      </mat-form-field>
 
-        <!-- CONTENT URL / TEXTAREA -->
-        <mat-form-field appearance="fill" class="w-full mb-4">
-          <mat-label>Content URL</mat-label>
-          <textarea matInput formControlName="contentUrl" rows="3" placeholder="Enter URL or content"></textarea>
-          <mat-error *ngIf="form.controls['contentUrl'].invalid && form.controls['contentUrl'].touched">
-            Content is required
-          </mat-error>
-        </mat-form-field>
+      <div class="actions">
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">
+          {{ isEdit ? 'Mentés' : 'Kártya létrehozása' }}
+        </button>
+        <button mat-stroked-button color="warn" type="button" (click)="onDelete()" *ngIf="isEdit">Törlés</button>
+      </div>
+    </form>
 
-        <!-- ACTION BUTTONS -->
-        <div class="flex space-x-2">
-          <button mat-raised-button
-                  color="primary"
-                  type="submit"
-                  [disabled]="form.invalid || (!selectedFile && !isEdit)">
-            {{ isEdit ? 'Save Changes' : 'Create Card' }}
-          </button>
-          <button *ngIf="isEdit"
-                  mat-raised-button
-                  color="warn"
-                  type="button"
-                  (click)="onDelete()">
-            Delete
-          </button>
-        </div>
-      </form>
+    <!-- Jobb: élő előnézet -->
+    <div class="preview">
+      <mat-card class="card">
+        <ng-container *ngIf="previewUrl; else noimg">
+          <img mat-card-image [src]="previewUrl" [alt]="form.controls.title.value || 'Előnézet'">
+        </ng-container>
+        <ng-template #noimg>
+          <div class="img-ph" aria-label="Nincs kép"></div>
+        </ng-template>
 
-    </div>
-    <div class="preview-column">
-      <mat-card class="example-card">
-        <img mat-card-image
-             [src]="preview.imageSrc"
-             [alt]="preview.title"
-             class="exampl  e-header-image" />
-        <mat-card-header>
-          <mat-card-title>{{ preview.title || 'Title will appear here' }}</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <p>{{ preview.contentUrl || 'Content URL will appear here' }}</p>
+        <mat-card-title class="ttl">
+          {{ form.controls.title.value || 'A cím itt jelenik meg' }}
+        </mat-card-title>
+
+        <mat-card-content class="cnt">
+          <p>{{ form.controls.contentUrl.value || 'A tartalom/link itt jelenik meg' }}</p>
         </mat-card-content>
       </mat-card>
     </div>
   </div>
-</div>
+</section>
+
+<style>
+  .wrap {
+    max-width: 1100px;
+    margin: 1rem auto;
+    padding: 0 1rem
+  }
+
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .75rem
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem
+  }
+
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 1fr
+    }
+  }
+
+  .form {
+    display: grid;
+    gap: .75rem;
+    align-content: start
+  }
+
+  .field {
+    width: 100%
+  }
+
+  .upload {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem
+  }
+
+  .lbl {
+    font-weight: 600
+  }
+
+  .muted {
+    color: #777
+  }
+
+  .preview {
+    align-self: start
+  }
+
+  .card {
+    border-radius: 12px;
+    overflow: hidden
+  }
+
+  .img-ph {
+    height: 160px;
+    border-radius: 12px;
+    background: linear-gradient(135deg,#eaeaea,#f5f5f5)
+  }
+
+  .ttl {
+    margin: .5rem .75rem 0
+  }
+
+  .cnt {
+    padding: .25rem .75rem .75rem
+  }
+</style>

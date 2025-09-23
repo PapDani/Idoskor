@@ -6,6 +6,8 @@
   <table class="grid">
     <thead>
       <tr>
+        <th style="width:36px"></th>
+        <th style="width:70px;text-align:right">#</th>
         <th>ID</th>
         <th>Cím</th>
         <th>Cikk hozzárendelés</th>
@@ -13,8 +15,10 @@
         <th>Admin műveletek</th>
       </tr>
     </thead>
-    <tbody>
-      <tr *ngFor="let c of cards">
+    <tbody cdkDropList (cdkDropListDropped)="drop($event)">
+      <tr *ngFor="let c of cards; let i = index; trackBy: trackId" cdkDrag>
+        <td class="drag-cell"><span cdkDragHandle class="handle" title="Húzd a rendezéshez">↕</span></td>
+        <td class="order-cell">{{ i + 1 }}</td>
         <td>{{ c.id }}</td>
         <td>{{ c.title }}</td>
 
@@ -59,7 +63,8 @@
 
   table.grid {
     width: 100%;
-    border-collapse: collapse
+    border-collapse: collapse;
+    background: #fff
   }
 
     table.grid th, table.grid td {
@@ -77,5 +82,35 @@
 
   .muted {
     color: #888
+  }
+
+  .drag-cell {
+    width: 36px;
+    text-align: center
+  }
+
+  .handle {
+    cursor: grab;
+    user-select: none
+  }
+
+  .order-cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: #555;
+    width: 70px
+  }
+
+  tr.cdk-drag-preview {
+    box-shadow: 0 6px 18px rgba(0,0,0,.2);
+    background: #fff
+  }
+
+  tr.cdk-drag-animating {
+    transition: transform .2s
+  }
+
+  tbody.cdk-drop-list-dragging tr:not(.cdk-drag-placeholder) {
+    transition: transform .2s
   }
 </style>
