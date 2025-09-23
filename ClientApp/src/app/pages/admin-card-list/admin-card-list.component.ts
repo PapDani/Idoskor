@@ -7,13 +7,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { CardService, Card } from '../../services/card.service';
 import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+import { MatIconModule } from '@angular/material/icon';
 
 type PageOption = { key: string; title: string };
 
 @Component({
   standalone: true,
   selector: 'app-admin-cards',
-  imports: [CommonModule, MatSelectModule, MatButtonModule, MatSnackBarModule, RouterLink, DragDropModule],
+  imports: [CommonModule, MatSelectModule, MatButtonModule, MatSnackBarModule, RouterLink, DragDropModule, MatIconModule],
   templateUrl: './admin-card-list.component.html'
 })
 export class AdminCardsComponent {
@@ -63,7 +64,8 @@ export class AdminCardsComponent {
     this.router.navigate(['/admin/cards', card.id, 'edit']);
   }
 
-  delete(card: Card) {
+  delete(card: Card, ev?: MouseEvent) {
+    ev?.stopPropagation();
     if (!confirm(`Biztosan törlöd a kártyát? (#${card.id} – ${card.title})`)) return;
     this.cardsApi.delete(card.id).subscribe({
       next: () => { this.snack.open('Kártya törölve ✅', undefined, { duration: 1500 }); this.reload(); },

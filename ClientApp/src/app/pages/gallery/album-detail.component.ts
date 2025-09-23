@@ -1,96 +1,124 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, AfterViewInit, Directive, ElementRef, HostBinding, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { GalleryService, AlbumDetail } from '../../services/gallery.service';
-import { LazyImageDirective } from '../../directives/lazy-image.directive';
 import { PhotoViewerDialogComponent } from './photo-viewer-dialog.component';
 
-@Component({
+/* --- Lazy blur direktíva --- */
+@Directive({
+  selector: 'img[lazyBlur]',
   standalone: true,
-  selector: 'app-album-detail',
-  imports: [CommonModule, RouterLink, MatDialogModule, LazyImageDirective],
-  template: `
-  <section class="wrap" *ngIf="album">
-    <div class="head">
-      <h1>{{ album.title }}</h1>
-      <a routerLink="/gallery">← Vissza a galériához</a>
-    </div>
-    <p *ngIf="album.description" class="desc">{{ album.description }}</p>
-
-    <div class="masonry" *ngIf="album.photos?.length; else none">
-      <figure class="item" *ngFor="let p of album.photos; let i = index" (click)="openViewer(i)">
-        <img
-          [attr.srcset]="srcsetFor(p.imageUrl) || null"
-          [attr.sizes]="srcsetFor(p.imageUrl) ? sizesAttr : null"
-          [appLazyImage]="p.imageUrl"
-          [alt]="p.title || album.title">
-        <figcaption *ngIf="p.title">{{ p.title }}</figcaption>
-      </figure>
-    </div>
-    <ng-template #none><p class="muted">Ebben az albumban még nincsenek képek.</p></ng-template>
-  </section>
-  `,
-  styles: [`
-    .wrap{max-width:1100px;margin:1rem auto;padding:0 1rem}
-    .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
-    .desc{color:#444;margin:.25rem 0 1rem}
-    .masonry{column-count:4;column-gap:12px}
-    @media (max-width: 1200px){ .masonry{column-count:3} }
-    @media (max-width: 900px){ .masonry{column-count:2} }
-    @media (max-width: 600px){ .masonry{column-count:1} }
-    .item{break-inside:avoid;margin:0 0 12px;cursor:zoom-in}
-    .item img{width:100%;border-radius:8px;display:block}
-    .item figcaption{font-size:.9rem;color:#555;margin-top:.25rem}
-
-    /* Lazy blur-in */
-    img.lazy-img{filter:blur(12px);opacity:.6;transition:filter .4s ease, opacity .4s ease}
-    img.loaded{filter:blur(0);opacity:1}
-    .muted{color:#767676}
-  `]
 })
-export class AlbumDetailComponent {
+export class LazyBlurDirectiveDetail implements AfterViewInit {
+  @HostBinding('class.is-loading') isLoading = true;
+  constructor(private el: ElementRef<HTMLImageElement>) { }
+  ngAfterViewInit() {
+    const img = this.el.nativeElement;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    if (img.complete && img.naturalWidth > 0) {
+      img.decode?.().catch(() => { }).finally(() => this.markLoaded());
+    }
+  }
+  @HostListener('load') onLoad() { this.markLoaded(); }
+  @HostListener('error') onError() { this.markLoaded(); }
+  private markLoaded() {
+    this.isLoading = false;
+    const img = this.el.nativeElement;
+    img.classList.add('is-loaded');
+    img.classList.remove('is-loading');
+  }
+}
+
+/* --- Képvariáns utilok --- */
+function normalizeUploadUrl(url?: string | null): string {
+  if (!url) return '';
+  let u = url.trim();
+  u = u.replace(/^~?\/?wwwroot\/?/i, '');
+  if (!u.startsWith('/')) u = '/' + u;
+  return u;
+}
+function preferBestDefault(url: string): string {
+  return url.replace(/_(orig|w\d+)\.(webp|jpe?g|png)$/i, '_w1024.webp');
+}
+function buildSrcsetFromVariant(url: string): string {
+  const m = url.match(/^(.*\/)([0-9a-f]{32})(?:_(w(\d+)|orig))\.(webp|jpe?g|png)$/i);
+  if (!m) return '';
+  const base = m[1];
+  const guid = m[2];
+  const variants = [320, 640, 1024, 1600];
+  return variants.map(w => `${base}${guid}_w${w}.webp ${w}w`).join(', ');
+}
+
+@Component({
+  selector: 'app-album-detail',
+  standalone: true,
+  templateUrl: './album-detail.component.html',
+  // mini stílus + egyszerű "masonry"
+  styles: [`
+    img[lazyBlur] {
+      filter: blur(12px);
+      transform: scale(1.02);
+      opacity: .85;
+      transition: filter .25s ease, transform .25s ease, opacity .25s ease;
+    }
+    img[lazyBlur].is-loaded {
+      filter: none;
+      transform: none;
+      opacity: 1;
+    }
+    .masonry { column-width: 320px; column-gap: 12px; width: 100%; }
+    .item { break-inside: avoid; margin: 0 0 12px; }
+    .item img { width: 100%; display: block; border-radius: 8px; cursor: zoom-in; }
+  `],
+  imports: [CommonModule, RouterModule, HttpClientModule, LazyBlurDirectiveDetail, MatDialogModule],
+})
+export class AlbumDetailComponent implements OnInit {
+  private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
-  private api = inject(GalleryService);
   private dialog = inject(MatDialog);
 
-  album?: AlbumDetail;
+  album: any = null;
+  photos: any[] = [];
+  loading = true;
+  placeholder = 'assets/img/placeholder-photo.webp';
 
-  ngOnInit() {
-    const slug = this.route.snapshot.paramMap.get('slug')!;
-    this.api.getBySlug(slug).subscribe(a => this.album = a);
-  }
+  ngOnInit(): void {
+    const slug = this.route.snapshot.paramMap.get('slug');
+    if (!slug) { this.loading = false; return; }
 
-  openViewer(index: number) {
-    if (!this.album?.photos?.length) return;
-    this.dialog.open(PhotoViewerDialogComponent, {
-      panelClass: 'lightbox-panel',
-      data: { photos: this.album.photos, index, albumTitle: this.album.title },
-      maxWidth: '100vw',
-      width: '100vw',
-      height: '100vh',
-      autoFocus: false
+    this.http.get<any>(`/api/Albums/${encodeURIComponent(slug)}`).subscribe({
+      next: res => {
+        this.album = res?.album ?? res;
+        const arr = res?.photos ?? res?.items ?? res?.images ?? [];
+        this.photos = Array.isArray(arr) ? arr : [];
+        this.loading = false;
+      },
+      error: () => { this.loading = false; }
     });
   }
 
-  srcsetFor(url: string): string | null {
-    // Ha a fájlnév végén _wNNN.webp mintát találunk, generálunk más variánsokat is
-    const m = url.match(/_w(\d+)\.(webp|jpe?g|png)$/i);
-    if (!m) return null;
-
-    const base = url.replace(/_w\d+\.(webp|jpe?g|png)$/i, '');
-    const ext = url.endsWith('.webp') ? 'webp' : 'webp'; // kényszerítjük webpre
-    const make = (w: number) => `${base}_w${w}.${ext}`;
-
-    const set = [
-      `\${make(320)} 320w`,
-      `\${make(640)} 640w`,
-      `\${make(1024)} 1024w`,
-      `\${make(1600)} 1600w`
-    ];
-    return set.join(', ');
+  // -- ezekre hivatkozik a template --
+  photoUrl(p: any): string {
+    const url = normalizeUploadUrl(p?.imageUrl || '');
+    return url ? preferBestDefault(url) : this.placeholder;
   }
-
-  sizesAttr = '(min-width: 1200px) 25vw, (min-width: 900px) 33vw, (min-width: 600px) 50vw, 100vw';
-
+  photoSrcset(p: any): string {
+    const url = normalizeUploadUrl(p?.imageUrl || '');
+    return url ? buildSrcsetFromVariant(url) : '';
+  }
+  openLightbox(p: any) {
+    const idx = Math.max(0, this.photos.findIndex(x => x === p || x?.id === p?.id));
+    this.dialog.open(PhotoViewerDialogComponent, {
+      data: { photos: this.photos, index: idx, album: this.album },
+      panelClass: 'photo-viewer-dialog',
+      maxWidth: '100vw',
+      width: '100vw',
+      height: '100vh',
+      autoFocus: false,
+      restoreFocus: false,
+      closeOnNavigation: true
+    });
+  }
 }

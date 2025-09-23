@@ -1,0 +1,19 @@
+<div *ngIf="loading" class="p-4">Betöltés…</div>
+
+<div *ngIf="!loading && album">
+  <h2 class="mb-3">{{ album.title }}</h2>
+  <p class="mb-4" *ngIf="album.description">{{ album.description }}</p>
+
+  <div class="masonry">
+    <div class="item" *ngFor="let p of photos">
+      <img lazyBlur
+           [src]="photoUrl(p)"
+           [attr.srcset]="photoSrcset(p)"
+           sizes="(max-width: 599px) 90vw, (max-width: 1199px) 45vw, 25vw"
+           [alt]="p.title || 'Photo'"
+           (click)="openLightbox(p)">
+    </div>
+  </div>
+</div>
+
+<div *ngIf="!loading && !album" class="p-4">Album nem található.</div>

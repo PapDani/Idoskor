@@ -118,6 +118,16 @@ public class CardsController : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var card = await _db.Cards.FindAsync(id);
+        if (card is null) return NotFound();
+        _db.Cards.Remove(card);
+        await _db.SaveChangesAsync();
+        return NoContent(); // 204
+    }
+
     // Drag&drop sorrend mentése (admin)
     [HttpPost("reorder")]
     public async Task<IActionResult> Reorder([FromBody] List<CardReorderDto> items)

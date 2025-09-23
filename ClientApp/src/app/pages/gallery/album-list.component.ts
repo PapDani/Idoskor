@@ -1,46 +1,108 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, AfterViewInit, Directive, ElementRef, HostBinding, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { GalleryService, AlbumListItem } from '../../services/gallery.service';
-import { LazyImageDirective } from '../../directives/lazy-image.directive';
+import { RouterModule } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { MatCardModule } from '@angular/material/card';
+
+/* --- Lazy blur direktíva (cache-esetre is) --- */
+@Directive({
+  selector: 'img[lazyBlur]',
+  standalone: true,
+})
+export class LazyBlurDirectiveList implements AfterViewInit {
+  @HostBinding('class.is-loading') isLoading = true;
+  constructor(private el: ElementRef<HTMLImageElement>) { }
+  ngAfterViewInit() {
+    const img = this.el.nativeElement;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    if (img.complete && img.naturalWidth > 0) {
+      img.decode?.().catch(() => { }).finally(() => this.markLoaded());
+    }
+  }
+  @HostListener('load') onLoad() { this.markLoaded(); }
+  @HostListener('error') onError() { this.markLoaded(); }
+  private markLoaded() {
+    this.isLoading = false;
+    const img = this.el.nativeElement;
+    img.classList.add('is-loaded');
+    img.classList.remove('is-loading');
+  }
+}
+
+/* --- Képvariáns utilok --- */
+function normalizeUploadUrl(url?: string | null): string {
+  if (!url) return '';
+  let u = url.trim();
+  u = u.replace(/^~?\/?wwwroot\/?/i, ''); // „wwwroot” törlése, ha benne maradt
+  if (!u.startsWith('/')) u = '/' + u;
+  return u;
+}
+function preferBestDefault(url: string): string {
+  // Grid/kártya nézetben 1024 a jó default
+  return url.replace(/_(orig|w\d+)\.(webp|jpe?g|png)$/i, '_w1024.webp');
+}
+function buildSrcsetFromVariant(url: string): string {
+  // <guid>_w320.webp / _w640 / _w1024 / _w1600
+  const m = url.match(/^(.*\/)([0-9a-f]{32})(?:_(w(\d+)|orig))\.(webp|jpe?g|png)$/i);
+  if (!m) return '';
+  const base = m[1];
+  const guid = m[2];
+  const variants = [320, 640, 1024, 1600];
+  return variants.map(w => `${base}${guid}_w${w}.webp ${w}w`).join(', ');
+}
 
 @Component({
-  standalone: true,
   selector: 'app-album-list',
-  imports: [CommonModule, RouterLink, LazyImageDirective],
-  template: `
-  <section class="wrap">
-    <h1>Galéria</h1>
-    <div class="grid">
-      <a class="album-card" *ngFor="let a of albums" [routerLink]="['/gallery', a.slug]">
-        <div class="thumb">
-          <img *ngIf="a.coverImageUrl" [appLazyImage]="a.coverImageUrl!" [alt]="a.title">
-          <div class="overlay"></div>
-          <span class="badge" aria-label="Képek száma">{{ a.photoCount }}</span>
-        </div>
-        <h3 class="title">{{ a.title }}</h3>
-      </a>
-    </div>
-  </section>
-  `,
+  standalone: true,
+  templateUrl: './album-list.component.html',
+  // kis stílus a blur effekt eltüntetéséhez
   styles: [`
-    .wrap{max-width:1100px;margin:1rem auto;padding:0 1rem}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
-    .album-card{display:block;color:inherit;text-decoration:none}
-    .thumb{position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#ececec,#f6f6f6)}
-    .thumb img{width:100%;height:100%;object-fit:cover;transform:scale(1.02);transition:transform .3s ease, filter .3s ease;filter:saturate(.9)}
-    .album-card:hover .thumb img{transform:scale(1.06);filter:saturate(1)}
-    .overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.35),transparent 55%);pointer-events:none}
-    .badge{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.65);color:#fff;border-radius:999px;padding:.2rem .55rem;font-size:.85rem}
-    .title{margin:.5rem .25rem 0;font-weight:600}
-
-    /* Lazy blur-in */
-    img.lazy-img{filter:blur(12px);opacity:.6;transition:filter .4s ease, opacity .4s ease}
-    img.loaded{filter:blur(0);opacity:1}
-  `]
+    img[lazyBlur] {
+      filter: blur(12px);
+      transform: scale(1.02);
+      opacity: .85;
+      transition: filter .25s ease, transform .25s ease, opacity .25s ease;
+    }
+    img[lazyBlur].is-loaded {
+      filter: none;
+      transform: none;
+      opacity: 1;
+    }
+    .album-card { cursor: pointer; }
+    .album-card mat-card-header { padding: 12px 16px 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 16px; }
+  `],
+  imports: [CommonModule, RouterModule, MatCardModule, LazyBlurDirectiveList],
 })
-export class AlbumListComponent {
-  private api = inject(GalleryService);
-  albums: AlbumListItem[] = [];
-  ngOnInit() { this.api.listPublic().subscribe(list => this.albums = list); }
+export class AlbumListComponent implements OnInit {
+  private http = inject(HttpClient);
+
+  albums: any[] = [];
+  loading = true;
+  placeholder = 'assets/img/placeholder-photo.webp';
+
+  ngOnInit(): void {
+    // ANY-t kérünk vissza, hogy rugalmasan kezeljük a választ
+    this.http.get<any>('/api/Albums').subscribe({
+      next: res => {
+        const arr = Array.isArray(res) ? res : (res?.items ?? res?.albums ?? res?.data ?? []);
+        this.albums = Array.isArray(arr) ? arr : [];
+        this.loading = false;
+      },
+      error: () => { this.albums = []; this.loading = false; }
+    });
+  }
+
+  coverUrl(a: any): string {
+    const raw = a?.coverUrl || a?.cover?.imageUrl || a?.coverImageUrl || '';
+    const url = normalizeUploadUrl(raw);
+    return url ? preferBestDefault(url) : this.placeholder;
+  }
+
+  coverSrcset(a: any): string {
+    const raw = a?.coverUrl || a?.cover?.imageUrl || a?.coverImageUrl || '';
+    const url = normalizeUploadUrl(raw);
+    return url ? buildSrcsetFromVariant(url) : '';
+  }
 }

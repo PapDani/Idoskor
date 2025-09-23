@@ -1,0 +1,16 @@
+<div *ngIf="loading" class="p-4">Betöltés…</div>
+
+<div class="grid" *ngIf="!loading">
+  <mat-card class="album-card" *ngFor="let a of albums" [routerLink]="['/gallery', a.slug]">
+    <img lazyBlur
+         mat-card-image
+         [src]="coverUrl(a)"
+         [attr.srcset]="coverSrcset(a)"
+         sizes="(max-width: 599px) 90vw, (max-width: 1199px) 45vw, 360px"
+         [alt]="a.title || 'Album cover'">
+    <mat-card-header>
+      <mat-card-title>{{ a.title }}</mat-card-title>
+      <mat-card-subtitle>{{ a.photosCount ?? a.photoCount ?? a.count ?? 0 }} kép</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+</div>
