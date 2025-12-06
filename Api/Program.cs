@@ -13,6 +13,7 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -149,8 +150,6 @@ using (var scope = app.Services.CreateScope())
 
     await DbSeeder.SeedAsync(db);      // itt már ne legyen Migrate()
 }
-
-using Microsoft.AspNetCore.DataProtection;
 
 // (opcionális) egészségügyi endpoint
 app.MapGet("/healthz", () => Results.Ok("ok"));
