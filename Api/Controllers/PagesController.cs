@@ -101,4 +101,25 @@ public class PagesController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpDelete("{key}")]
+    public async Task<IActionResult> Delete(string key)
+    {
+        var page = await _db.Pages.SingleOrDefaultAsync(p => p.Key == key);
+        if (page is null) return NotFound();
+
+        // 1) Menüelemek leválasztása (FK ütközés elkerülése)
+        var affectedMenu = await _db.MenuItems.Where(m => m.PageId == page.Id).ToListAsync();
+        foreach (var m in affectedMenu) m.PageId = null;
+
+        // 2) Kártyák leválasztása, ha kapcsolva vannak a cikkhez
+        var affectedCards = await _db.Cards.Where(c => c.PageId == page.Id).ToListAsync();
+        foreach (var c in affectedCards) c.PageId = null;
+
+        // 3) Oldal törlése
+        _db.Pages.Remove(page);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
 }

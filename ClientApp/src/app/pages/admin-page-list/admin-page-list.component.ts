@@ -14,6 +14,7 @@ import { MenuNode, MenuService } from '../../services/menu.service';
 import { slugify, slugifyPath } from '../../utils/slugify';
 import { PageEditDialogComponent } from './page-edit-dialog.component';
 import { map, of, catchError } from 'rxjs';
+import { MatIcon } from '@angular/material/icon';
 
 type PageListItem = {
   key: string;
@@ -31,7 +32,7 @@ type MenuLabelOption = { id: number; label: string; path: string };
     CommonModule, RouterLink, ReactiveFormsModule,
     MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule, MatSelectModule,
     MatDialogModule,
-    HelpBoxComponent
+    HelpBoxComponent, MatIcon
   ],
   template: `
     <section class="wrap">
@@ -102,6 +103,9 @@ type MenuLabelOption = { id: number; label: string; path: string };
             <td class="actions">
               <a [routerLink]="['/admin/pages', p.key]">Szerkesztés</a>
               <button mat-stroked-button (click)="editModal(p.key)">Modális szerkesztés</button>
+              <button mat-icon-button color="warn" (click)="delete(p)" aria-label="Törlés">
+                <mat-icon>delete</mat-icon>
+              </button>
             </td>
           </tr>
         </tbody>
@@ -223,6 +227,23 @@ export class AdminPagesListComponent {
         this.loadPages();
       },
       error: () => this.snack.open('Létrehozás sikertelen ❌', undefined, { duration: 2500 })
+    });
+  }
+
+  // TÖRLÉS
+  delete(p: any): void {
+    if (!p?.key) return;
+    if (!confirm(`Biztosan törlöd ezt a cikket?\n\n${p.title} (${p.key})`)) return;
+
+    this.http.delete(`/api/Pages/${encodeURIComponent(p.key)}`).subscribe({
+      next: () => {
+        this.pages = this.pages.filter(x => x !== p);
+        this.snack.open('Oldal törölve.', undefined, { duration: 1500 });
+      },
+      error: (err) => {
+        console.error(err);
+        this.snack.open('Törlés sikertelen.', undefined, { duration: 2000 });
+      }
     });
   }
 
