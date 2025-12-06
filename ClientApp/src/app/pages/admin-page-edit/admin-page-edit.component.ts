@@ -135,7 +135,7 @@ export class AdminPageEditComponent {
 
   constructor() {
     // page lista a választóhoz
-    this.http.get<PageOption[]>('/api/Pages')
+    this.http.get<PageOption[]>('https://idoskor.onrender.com/api/Pages')
       .subscribe(list => this.pages = list.map(p => ({ key: (p as any).key, title: (p as any).title || (p as any).key })));
 
     this.loadCurrent();
@@ -186,7 +186,8 @@ export class AdminPageEditComponent {
     input.type = 'file'; input.accept = 'image/*';
     input.onchange = () => {
       const file = input.files?.[0]; if (!file) return;
-      this.uploads.uploadImage(file).subscribe((url: string) => {
+      this.uploads.uploadImage(file).subscribe((url: any) => {
+        const imageUrl = url as string;
         const range = this.editor!.getSelection(true);
         const index = range ? range.index : (this.editor!.getLength() || 0);
         this.editor!.insertEmbed(index, 'image', url, 'user');

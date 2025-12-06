@@ -215,11 +215,13 @@ export class AdminGalleryComponent {
     if (!files || files.length === 0) return;
 
     const tasks: Promise<{ imageUrl: string }>[] = Array.from(files).map(f =>
-      new Promise<{ imageUrl: string }>(resolve => {
-        this.upload.uploadImageVariants(f).subscribe(vars => {
-          // A DB-be a megjelenítéshez optimális 1024px-es WebP-t tesszük,
-          // lightboxban ez is bőven elég lesz – de később válthatunk w1600-ra.
-          resolve({ imageUrl: vars.w1024 || vars.w640 || vars.original });
+      new Promise<{ imageUrl: string }>((resolve, reject) => {
+        this.upload.uploadImageVariants(f).subscribe({
+          next: (vars: any) => {
+            const url = vars.w1024 || vars.w640 || vars.original;
+            resolve({ imageUrl: url });
+          },
+          error: (err: any) => reject(err)
         });
       })
     );

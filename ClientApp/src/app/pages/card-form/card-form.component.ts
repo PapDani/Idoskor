@@ -66,13 +66,12 @@ export class CardFormComponent {
 
     // Variánsos feltöltés → az 1024-es WebP-t írjuk az imageUrl-be
     this.upload.uploadImageVariants(f).subscribe({
-      next: vars => {
+      next: (vars: any) => {
         const url = vars.w1024 || vars.w640 || vars.original;
-        this.form.controls.imageUrl.setValue(url);
+        this.form.patchValue({ imageUrl: url });
         this.previewUrl = url;
-        this.snack.open('Kép feltöltve ✅', undefined, { duration: 1200 });
       },
-      error: () => this.snack.open('Feltöltés sikertelen ❌', undefined, { duration: 2000 })
+      error: () => this.snack.open('Kép feltöltése sikertelen ❌', undefined, { duration: 2000 })
     });
   }
 
