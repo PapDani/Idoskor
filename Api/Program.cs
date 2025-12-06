@@ -116,7 +116,7 @@ app.MapControllers();
 
 // ---------- Minimal API diagnosztika + auth ----------
 
-// Egyszerû ping – ezt már tesztelted
+// Egyszerû ping
 app.MapGet("/api/ping", () =>
     Results.Json(new { ok = true, src = "api", ts = DateTime.UtcNow }));
 
@@ -136,7 +136,7 @@ app.MapGet("/api/auth/diag", (IConfiguration cfg) =>
     return Results.Json(data);
 });
 
-// Login – csak ENV admin felhasználó
+// Login – ENV alapú admin felhasználó
 app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body) =>
 {
     if (body is null)
@@ -149,7 +149,14 @@ app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body
 
     if (!string.Equals(body.Username, user, StringComparison.Ordinal) ||
         !string.Equals(body.Password, pass, StringComparison.Ordinal))
-        return Results.Unauthorized(new { error = "Invalid username or password." });
+    {
+        // Itt nem hívunk Results.Unauthorized(body)-t, mert nincs ilyen overload,
+        // hanem explicit 401-es JSON választ adunk:
+        return Results.Json(
+            new { error = "Invalid username or password." },
+            statusCode: 401
+        );
+    }
 
     var key = cfg["Jwt:Key"];
     if (string.IsNullOrWhiteSpace(key))
