@@ -7,7 +7,6 @@ using Infrastructure.Seed;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -27,20 +26,19 @@ Directory.CreateDirectory(dataRoot);
 var dbPath = Path.Combine(dataRoot, "idoskor.db");
 var dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "SqlServer";
 
-// DbContext regisztráció
-if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+// DbContext regisztráció – SQLite ágban PendingModelChangesWarning némítva
+builder.Services.AddDbContext<AppDbContext>(opt =>
 {
-    builder.Services.AddDbContext<AppDbContext>(opt =>
+    if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
     {
         opt.UseSqlite($"Data Source={dbPath}");
         opt.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
-    });
-}
-else
-{
-    builder.Services.AddDbContext<AppDbContext>(opt =>
-        opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
-}
+    }
+    else
+    {
+        opt.UseSqlServer(builder.Configuration.GetConnectionString("Default"));
+    }
+});
 
 // -------------------------------------------------
 // 2) Repositoryk, szolgáltatások
@@ -138,15 +136,11 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-    {
-        db.Database.EnsureCreated(); // SQLite: migrációk helyett
-    }
+        db.Database.EnsureCreated();   // csak létrehoz, nem migrál
     else
-    {
-        db.Database.Migrate();       // MSSQL: marad a szokásos
-    }
+        db.Database.Migrate();         // MSSQL: migráció fut
 
-    await DbSeeder.SeedAsync(db);
+    await DbSeeder.SeedAsync(db);      // itt már ne legyen Migrate()
 }
 
 // (opcionális) egészségügyi endpoint

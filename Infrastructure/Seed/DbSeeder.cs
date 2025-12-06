@@ -7,7 +7,7 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(AppDbContext db)
     {
-        await db.Database.MigrateAsync();
+        //await db.Database.MigrateAsync();
 
         // PAGE: about
         var about = await db.Pages.SingleOrDefaultAsync(p => p.Key == "about");
