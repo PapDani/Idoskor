@@ -29,12 +29,18 @@ var allowedOrigins = string.IsNullOrWhiteSpace(allowedOriginsEnv)
     ? defaultAllowedOrigins
     : allowedOriginsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-builder.Services.AddCors(o =>
+builder.Services.AddCors(opt =>
 {
-    o.AddPolicy("AppCors", p =>
-        p.WithOrigins(allowedOrigins)
+    opt.AddDefaultPolicy(p =>
+        p.WithOrigins(
+                "http://localhost:4200",                  // lokális fejlesztés
+                "https://idoskor-1-frontend.onrender.com",// Render frontend
+                "https://idoskor.onrender.com"            // (opcionális) ha innen is lesz valaha UI
+            )
          .AllowAnyHeader()
-         .AllowAnyMethod());
+         .AllowAnyMethod()
+    // .AllowCredentials()  // csak akkor kell, ha majd sütivel dolgozol
+    );
 });
 
 // DB provider (Sqlite / SqlServer)
