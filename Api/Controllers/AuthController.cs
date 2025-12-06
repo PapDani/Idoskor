@@ -12,14 +12,12 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class AuthController : ControllerBase
     {
         private readonly IConfiguration _cfg;
 
-        public AuthController(IConfiguration cfg)
-        {
-            _cfg = cfg;
-        }
+        public AuthController(IConfiguration cfg) => _cfg = cfg;
 
         public record LoginRequest(string Username, string Password);
         public record LoginResponse(string token, DateTime expiresAt);
@@ -32,25 +30,24 @@ namespace Api.Controllers
         [AllowAnonymous]
         public IActionResult Login([FromBody] LoginRequest req)
         {
-            var envUser = _cfg["AdminUsername"];
-            var envPass = _cfg["AdminPassword"];
-
+            var envUser = _cfg["AdminUser:Username"];
+            var envPass = _cfg["AdminUser:Password"];
             if (string.IsNullOrWhiteSpace(envUser) || string.IsNullOrWhiteSpace(envPass))
                 return StatusCode(500, new { error = "Admin credentials are not configured on the server." });
 
             if (!string.Equals(req.Username, envUser, StringComparison.Ordinal) ||
                 !string.Equals(req.Password, envPass, StringComparison.Ordinal))
-                return Unauthorized(new { error = "Hibás felhasználónév vagy jelszó." });
+                return Unauthorized(new { error = "Invalid username or password." });
 
-            var jwtKey = _cfg["Jwt_Key"];
+            var jwtKey = _cfg["Jwt:Key"];
             if (string.IsNullOrWhiteSpace(jwtKey))
                 return StatusCode(500, new { error = "JWT:Key is not configured." });
 
-            var issuer = _cfg["Jwt_Issuer"] ?? "Idoskor";
-            var audience = _cfg["Jwt_Auidence"] ?? "IdoskorAdmin";
+            var issuer = _cfg["Jwt:Issuer"] ?? "Idoskor";
+            var audience = _cfg["Jwt:Audience"] ?? "IdoskorAdmin";
 
             var now = DateTime.UtcNow;
-            var expires = now.AddHours(4); // igény szerint állítható
+            var expires = now.AddHours(12);
 
             var claims = new[]
             {
@@ -63,7 +60,7 @@ namespace Api.Controllers
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
-            var token = new JwtSecurityToken(
+            var jwtToken = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
@@ -72,7 +69,7 @@ namespace Api.Controllers
                 signingCredentials: creds
             );
 
-            var tokenStr = new JwtSecurityTokenHandler().WriteToken(token);
+            var tokenStr = new JwtSecurityTokenHandler().WriteToken(jwtToken);
             return Ok(new LoginResponse(tokenStr, expires));
         }
 
