@@ -39,6 +39,8 @@ Directory.CreateDirectory(dataRoot);
 var dbPath = Path.Combine(dataRoot, "idoskor.db");
 var dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "SqlServer";
 
+public record LoginRequest(string Username, string Password);
+
 // DbContext regisztráció – SQLite ágban PendingModelChangesWarning némítva
 builder.Services.AddDbContext<AppDbContext>(opt =>
 {
@@ -239,8 +241,6 @@ app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body
     var token = new JwtSecurityTokenHandler().WriteToken(jwt);
     return Results.Json(new { token, expiresAt = expires });
 });
-
-public record LoginRequest(string Username, string Password);
 
 app.MapControllers();
 app.Run();
