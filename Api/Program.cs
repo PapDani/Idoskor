@@ -1,61 +1,33 @@
-using Api.Filters;
-using Api.Services;
-using Domain.Interfaces;
-using Infrastructure;
-using Infrastructure.Repositories;
-using Infrastructure.Seed;
-using Infrastructure.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using System.Text;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Cors.Infrastructure;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Infrastructure;
+using Infrastructure.Seed;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
-
-var allowedOrigins = new[]
-{
-    "https://idoskor-1-frontend.onrender.com",
-    "https://idoskor.onrender.com",
-    "https://www.aktividoskor.hu"
-};
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -------------------------------------------------
-// 1) Adatgyökér (Renderen: /var/data) + Db provider
-// -------------------------------------------------
-var dataRoot = Environment.GetEnvironmentVariable("DATA_ROOT")
-              ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data");
-Directory.CreateDirectory(dataRoot);
+// ---------- Services ----------
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
-var dbPath = Path.Combine(dataRoot, "idoskor.db");
-var dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "SqlServer";
-
-public record LoginRequest(string Username, string Password);
-
-// DbContext regisztráció – SQLite ágban PendingModelChangesWarning némítva
-builder.Services.AddDbContext<AppDbContext>(opt =>
+// CORS
+var defaultAllowedOrigins = new[]
 {
-    if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-    {
-        opt.UseSqlite($"Data Source={dbPath}");
-        opt.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
-    }
-    else
-    {
-        opt.UseSqlServer(builder.Configuration.GetConnectionString("Default"));
-    }
-});
+    "https://idoskor-1-frontend.onrender.com",
+    "https://www.aktividoskor.hu",
+    "https://aktividoskor.hu"
+};
+var allowedOriginsEnv = builder.Configuration["ALLOWED_ORIGINS"];
+var allowedOrigins = string.IsNullOrWhiteSpace(allowedOriginsEnv)
+    ? defaultAllowedOrigins
+    : allowedOriginsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-//CORS
 builder.Services.AddCors(o =>
 {
     o.AddPolicy("AppCors", p =>
@@ -64,123 +36,90 @@ builder.Services.AddCors(o =>
          .AllowAnyMethod());
 });
 
-// -------------------------------------------------
-// 2) Repositoryk, szolgáltatások
-// -------------------------------------------------
-builder.Services.AddScoped<ICardRepository, CardRepository>();
-builder.Services.AddScoped<ICardService, CardService>();
-builder.Services.AddScoped<IFileStorageService, FileStorageService>();
-builder.Services.AddScoped<IPageRepository, PageRepository>();
-builder.Services.AddScoped<IPageService, PageService>();
-builder.Services.AddSingleton<ImageVariantService>();
+// DB provider (Sqlite / SqlServer)
+var dbProvider = (builder.Configuration["DB_PROVIDER"] ?? "Sqlite").Trim().ToLowerInvariant();
 
-builder.Services.AddControllers();
-
-// -------------------------------------------------
-// 3) Swagger
-// -------------------------------------------------
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+if (dbProvider == "sqlite")
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Idõskor API", Version = "v1" });
-    c.OperationFilter<SwaggerMultipartFormDataFilter>();
-});
+    var dataRoot = builder.Configuration["Data:Root"]
+                  ?? builder.Configuration["DATA_ROOT"]
+                  ?? "/var/data";
+    Directory.CreateDirectory(dataRoot);
+    var dbPath = Path.Combine(dataRoot, "app.db");
+    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlite($"Data Source={dbPath}"));
+}
+else
+{
+    // SQL Server fallback
+    var conn =
+        builder.Configuration.GetConnectionString("Default")
+        ?? builder.Configuration["SQLSERVER_CONNECTION_STRING"]
+        ?? "Server=.;Database=Idoskor;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
+    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(conn));
+}
 
-// -------------------------------------------------
-// 4) CORS (fejlesztéshez a 4200-as Angular miatt)
-// -------------------------------------------------
-builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
-    p.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod()));
-
-// -------------------------------------------------
-// 5) MIME kiterjesztések (webp)
-// -------------------------------------------------
-var contentTypeProvider = new FileExtensionContentTypeProvider();
-contentTypeProvider.Mappings[".webp"] = "image/webp";
-
-// -------------------------------------------------
-// 6) JWT auth
-// -------------------------------------------------
-var jwtSection = builder.Configuration.GetSection("Jwt");
-var key = Encoding.UTF8.GetBytes(jwtSection["Key"] ?? "");
+// JWT auth
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Idoskor";
+var jwtAud = builder.Configuration["Jwt:Audience"] ?? "IdoskorAdmin";
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddJwtBearer(opt =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
+        opt.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = jwtSection["Issuer"],
+            ValidIssuer = jwtIssuer,
             ValidateAudience = true,
-            ValidAudience = jwtSection["Audience"],
+            ValidAudience = jwtAud,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateLifetime = true
+            IssuerSigningKey = string.IsNullOrWhiteSpace(jwtKey)
+                ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes("fallback-key-change-me-very-long"))
+                : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2)
         };
     });
 
 builder.Services.AddAuthorization();
 
-var keysPath = Path.Combine(dataRoot, "keys");
-Directory.CreateDirectory(keysPath);
-
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
-    .SetApplicationName("Idoskor");
-
 var app = builder.Build();
 
-// -------------------------------------------------
-// Middleware-ek
-// -------------------------------------------------
+// ---------- Middleware ----------
 app.UseCors("AppCors");
+
 app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Idõskor API v1");
-    c.RoutePrefix = "";
-});
+app.UseSwaggerUI();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// wwwroot statikus (képek, css, stb.) + webp támogatás
-app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypeProvider });
-
-// /uploads -> tartós lemez (Render Disk vagy helyben App_Data/uploads)
-var uploadsPhysical = Path.Combine(dataRoot, "uploads");
-Directory.CreateDirectory(uploadsPhysical);
-app.UseStaticFiles(new StaticFileOptions
+// /uploads statikus fájlok (fizikai mappa -> /uploads)
 {
-    FileProvider = new PhysicalFileProvider(uploadsPhysical),
-    RequestPath = "/uploads",
-    ServeUnknownFileTypes = true,
-    ContentTypeProvider = contentTypeProvider
-});
+    var dataRoot = builder.Configuration["Data:Root"]
+                  ?? builder.Configuration["DATA_ROOT"]
+                  ?? "/var/data";
+    var uploadsPath = Path.Combine(dataRoot, "uploads");
+    Directory.CreateDirectory(uploadsPath);
 
-// -------------------------------------------------
-// Adatbázis inicializálás
-// -------------------------------------------------
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-    if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-        db.Database.EnsureCreated();   // csak létrehoz, nem migrál
-    else
-        db.Database.Migrate();         // MSSQL: migráció fut
-
-    await DbSeeder.SeedAsync(db);      // itt már ne legyen Migrate()
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(uploadsPath),
+        RequestPath = "/uploads"
+    });
 }
 
-// (opcionális) egészségügyi endpoint
-app.MapGet("/healthz", () => Results.Ok("ok"));
+// ---------- Controllers ----------
+app.MapControllers();
 
-//Login teszteléshez
+// ---------- Minimal API diagnosztika és login ----------
+
+// Egyszerû ping
 app.MapGet("/api/ping", () => Results.Json(new { ok = true, src = "api", ts = DateTime.UtcNow }));
 
-app.MapGet("/api/auth/diag2", (IConfiguration cfg) =>
+// Diagnosztika – ENV-ek
+app.MapGet("/api/auth/diag", (IConfiguration cfg) =>
 {
     var data = new
     {
@@ -195,6 +134,7 @@ app.MapGet("/api/auth/diag2", (IConfiguration cfg) =>
     return Results.Json(data);
 });
 
+// Login – ENV alapú admin, JWT vissza
 app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body) =>
 {
     if (body is null) return Results.BadRequest(new { error = "Empty body." });
@@ -242,5 +182,23 @@ app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body
     return Results.Json(new { token, expiresAt = expires });
 });
 
-app.MapControllers();
+// ---------- Migráció + seed ----------
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        await db.Database.MigrateAsync();
+        await DbSeeder.SeedAsync(db);
+    }
+    catch (Exception ex)
+    {
+        // Ha már létezik minden, ne álljon meg az app
+        Console.WriteLine($"[Startup] Migration/Seed warning: {ex.Message}");
+    }
+}
+
 app.Run();
+
+// ---------- Types (top-level statements fölött NE legyen típus!) ----------
+public record LoginRequest(string Username, string Password);
