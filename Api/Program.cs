@@ -14,6 +14,14 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Cors.Infrastructure;
+
+var allowedOrigins = new[]
+{
+    "https://idoskor-1-frontend.onrender.com",
+    ""https://idoskor.onrender.com",
+    "https://www.aktividoskor.hu"
+};
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +47,15 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
     {
         opt.UseSqlServer(builder.Configuration.GetConnectionString("Default"));
     }
+});
+
+//CORS
+builder.Services.AddCors(o =>
+{
+    o.AddPolicy("AppCors", p =>
+        p.WithOrigins(allowedOrigins)
+         .AllowAnyHeader()
+         .AllowAnyMethod());
 });
 
 // -------------------------------------------------
@@ -111,7 +128,7 @@ var app = builder.Build();
 // -------------------------------------------------
 // Middleware-ek
 // -------------------------------------------------
-app.UseCors();
+app.UseCors("AppCors");
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
