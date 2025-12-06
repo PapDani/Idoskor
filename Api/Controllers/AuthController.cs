@@ -29,6 +29,7 @@ namespace Api.Controllers
         public record LoginResponse(string token, DateTime expiresAt);
 
         [HttpPost("login")]
+        [HttpPost("/api/auth/login")]
         [AllowAnonymous]
         public IActionResult Login([FromBody] LoginRequest req)
         {
