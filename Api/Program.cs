@@ -12,6 +12,8 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +31,10 @@ var dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "SqlServer
 if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
 {
     builder.Services.AddDbContext<AppDbContext>(opt =>
-        opt.UseSqlite($"Data Source={dbPath}"));
+    {
+        opt.UseSqlite($"Data Source={dbPath}");
+        opt.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
+    });
 }
 else
 {
