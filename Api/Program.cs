@@ -131,7 +131,6 @@ app.UseStaticFiles(new StaticFileOptions
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "SqlServer";
 
     if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
     {
