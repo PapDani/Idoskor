@@ -19,7 +19,7 @@ using Microsoft.AspNetCore.Cors.Infrastructure;
 var allowedOrigins = new[]
 {
     "https://idoskor-1-frontend.onrender.com",
-    ""https://idoskor.onrender.com",
+    "https://idoskor.onrender.com",
     "https://www.aktividoskor.hu"
 };
 
