@@ -115,7 +115,7 @@ export class NewPageDialogComponent {
     const key = this.form.controls.key.value?.trim();
     if (!key) return;
     this.checkingDup = true;
-    this.http.get(`/api/Pages/${encodeURIComponent(key)}`, { observe: 'response' })
+    this.http.get(`https://idoskor.onrender.com/api/Pages/${encodeURIComponent(key)}`, { observe: 'response' })
       .pipe(
         map(() => true), // 200 -> létezik
         catchError(err => of(err?.status === 404 ? false : true))

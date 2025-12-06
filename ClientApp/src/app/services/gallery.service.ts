@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE_URL } from '../api.config';
 
 export interface AlbumListItem {
   id: number;
@@ -36,48 +37,53 @@ export interface AlbumDetail {
 
 @Injectable({ providedIn: 'root' })
 export class GalleryService {
-  private http = inject(HttpClient);
-  private base = '/api/Albums';
+  private readonly baseUrl = `${API_BASE_URL}/Albums`;
+
+  constructor(private http: HttpClient) { }
 
   // publikus
   listPublic(): Observable<AlbumListItem[]> {
-    return this.http.get<AlbumListItem[]>(this.base);
+    return this.http.get<AlbumListItem[]>(this.baseUrl);
   }
   getBySlug(slug: string): Observable<AlbumDetail> {
-    return this.http.get<AlbumDetail>(`${this.base}/${encodeURIComponent(slug)}`);
+    return this.http.get<AlbumDetail>(`${this.baseUrl}/${encodeURIComponent(slug)}`);
   }
 
   // admin
   listAdmin(): Observable<AlbumListItem[]> {
-    return this.http.get<AlbumListItem[]>(`${this.base}/admin`);
+    return this.http.get<AlbumListItem[]>(`${this.baseUrl}/admin`);
   }
   createAlbum(body: { title: string; slug: string; description?: string | null }): Observable<AlbumListItem> {
-    return this.http.post<AlbumListItem>(this.base, body);
+    return this.http.post<AlbumListItem>(this.baseUrl, body);
   }
   updateAlbum(id: number, body: { title: string; slug: string; description?: string | null; isPublished: boolean }): Observable<void> {
-    return this.http.put<void>(`${this.base}/${id}`, body);
+    return this.http.put<void>(`${this.baseUrl}/${id}`, body);
   }
   deleteAlbum(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`);
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
   reorderAlbums(items: { id: number; order: number }[]): Observable<void> {
-    return this.http.post<void>(`${this.base}/reorder`, items);
+    return this.http.post<void>(`${this.baseUrl}/reorder`, items);
   }
   setCover(id: number, photoId: number): Observable<void> {
-    return this.http.put<void>(`${this.base}/${id}/cover`, { photoId });
+    return this.http.put<void>(`${this.baseUrl}/${id}/cover`, { photoId });
   }
   addPhotos(albumId: number, photos: { imageUrl: string; title?: string | null; description?: string | null }[]): Observable<void> {
-    return this.http.post<void>(`${this.base}/${albumId}/photos`, { photos });
+    return this.http.post<void>(`${this.baseUrl}/${albumId}/photos`, { photos });
   }
   reorderPhotos(albumId: number, items: { id: number; order: number }[]): Observable<void> {
-    return this.http.post<void>(`${this.base}/${albumId}/photos/reorder`, items);
+    return this.http.post<void>(`${this.baseUrl}/${albumId}/photos/reorder`, items);
   }
 
   // photo update/delete
-  updatePhoto(id: number, body: { title?: string | null; description?: string | null; isVisible: boolean }): Observable<void> {
-    return this.http.put<void>(`/api/Photos/${id}`, body);
+  updatePhoto(
+    id: number,
+    body: { title?: string | null; description?: string | null; isVisible: boolean }
+  ): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}`, body);
   }
+
   deletePhoto(id: number): Observable<void> {
-    return this.http.delete<void>(`/api/Photos/${id}`);
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 }

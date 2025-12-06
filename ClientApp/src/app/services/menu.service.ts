@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+import { API_BASE_URL } from '../api.config';
 
 export interface MenuNode {
   id: number;
@@ -28,8 +29,8 @@ export interface ReorderItem { id: number; parentId?: number | null; order: numb
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
-  private http = inject(HttpClient);
-  private base = '/api/Menu';
+  private readonly baseUrl = `${API_BASE_URL}/Menu`;
+  constructor(private http: HttpClient) { }
 
   private _tree$ = new BehaviorSubject<MenuNode[]>([]);
   /** Erre iratkoznak fel a komponensek (fejléc is). */
@@ -37,7 +38,7 @@ export class MenuService {
 
   /** Betölti az API-ról és közzéteszi a fa állapotát. */
   load(): void {
-    this.http.get<MenuNode[]>(`${this.base}/tree`).pipe(
+    this.http.get<MenuNode[]>(`${this.baseUrl}/tree`).pipe(
       catchError(() => of([])),
       tap(tree => this._tree$.next(tree ?? []))
     ).subscribe();
@@ -47,22 +48,22 @@ export class MenuService {
   get snapshot(): MenuNode[] { return this._tree$.value; }
 
   create(dto: CreateMenuItem): Observable<MenuNode> {
-    return this.http.post<MenuNode>(this.base, dto).pipe(
+    return this.http.post<MenuNode>(this.baseUrl, dto).pipe(
       tap(() => this.load())
     );
   }
   update(id: number, dto: UpdateMenuItem): Observable<void> {
-    return this.http.put<void>(`${this.base}/${id}`, dto).pipe(
+    return this.http.put<void>(`${this.baseUrl}/${id}`, dto).pipe(
       tap(() => this.load())
     );
   }
   delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`).pipe(
+    return this.http.delete<void>(`${this.baseUrl}/${id}`).pipe(
       tap(() => this.load())
     );
   }
   reorder(items: ReorderItem[]): Observable<void> {
-    return this.http.post<void>(`${this.base}/reorder`, items).pipe(
+    return this.http.post<void>(`${this.baseUrl}/reorder`, items).pipe(
       tap(() => this.load())
     );
   }

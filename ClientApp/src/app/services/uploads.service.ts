@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
+import { API_BASE_URL } from '../api.config';
 
 export interface ImageVariants {
   original: string;
@@ -12,19 +13,19 @@ export interface ImageVariants {
 
 @Injectable({ providedIn: 'root' })
 export class UploadsService {
-  private http = inject(HttpClient);
+  private readonly baseUrl = `${API_BASE_URL}/Uploads`;
+  constructor(private http: HttpClient) { }
 
   // Meglévő – visszafelé kompatibilis
-  uploadImage(file: File): Observable<string> {
-    const fd = new FormData();
-    fd.append('file', file);
-    return this.http.post('/api/Uploads/image', fd, { responseType: 'text' });
+  uploadImage(file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post(`${this.baseUrl}/image`, form);
   }
 
-  // ÚJ – variánsokkal
-  uploadImageVariants(file: File): Observable<ImageVariants> {
-    const fd = new FormData();
-    fd.append('file', file);
-    return this.http.post<ImageVariants>('/api/Uploads/image-variants', fd);
+  uploadImageVariants(file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post(`${this.baseUrl}/image-variants`, form);
   }
 }

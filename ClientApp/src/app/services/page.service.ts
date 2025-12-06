@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_BASE_URL } from '../api.config';
 
 export interface PageDto {
   key: string;
@@ -11,18 +12,18 @@ export interface PageDto {
 
 @Injectable({ providedIn: 'root' })
 export class PagesService {
-  private http = inject(HttpClient);
-  private base = '/api/Pages';
+  private readonly baseUrl = `${API_BASE_URL}/Pages`;
+  constructor(private http: HttpClient) { }
 
   list(): Observable<PageDto[]> {
-    return this.http.get<PageDto[]>(this.base);
+    return this.http.get<PageDto[]>(this.baseUrl);
   }
 
   get(key: string) {
-    return this.http.get<PageDto>(`${this.base}/${encodeURIComponent(key)}`);
+    return this.http.get<PageDto>(`${this.baseUrl}/${encodeURIComponent(key)}`);
   }
 
   update(key: string, body: { title: string; content: string }) {
-    return this.http.put<void>(`${this.base}/${encodeURIComponent(key)}`, body);
+    return this.http.put<void>(`${this.baseUrl}/${encodeURIComponent(key)}`, body);
   }
 }

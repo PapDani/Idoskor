@@ -103,7 +103,7 @@ export class AlbumDetailComponent implements OnInit {
     const slug = this.route.snapshot.paramMap.get('slug');
     if (!slug) { this.loading = false; return; }
 
-    this.http.get<any>(`/api/Albums/${encodeURIComponent(slug)}`).subscribe({
+    this.http.get<any>(`https://idoskor.onrender.com/api/Albums/${encodeURIComponent(slug)}`).subscribe({
       next: res => {
         this.album = res?.album ?? res;
         const arr = res?.photos ?? res?.items ?? res?.images ?? [];

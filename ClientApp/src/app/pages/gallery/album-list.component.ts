@@ -84,7 +84,7 @@ export class AlbumListComponent implements OnInit {
 
   ngOnInit(): void {
     // ANY-t kérünk vissza, hogy rugalmasan kezeljük a választ
-    this.http.get<any>('/api/Albums').subscribe({
+    this.http.get<any>('https://idoskor.onrender.com/api/Albums').subscribe({
       next: res => {
         const arr = Array.isArray(res) ? res : (res?.items ?? res?.albums ?? res?.data ?? []);
         this.albums = Array.isArray(arr) ? arr : [];

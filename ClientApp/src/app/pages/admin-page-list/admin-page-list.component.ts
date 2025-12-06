@@ -168,7 +168,7 @@ export class AdminPagesListComponent {
   }
 
   private loadPages() {
-    this.http.get<PageListItem[]>('/api/Pages/admin-list')
+    this.http.get<PageListItem[]>('https://idoskor.onrender.com/api/Pages/admin-list')
       .subscribe(list => this.pages = list);
   }
 
@@ -196,7 +196,7 @@ export class AdminPagesListComponent {
     const key = this.createForm.controls.key.value?.trim();
     if (!key) return;
     this.checkingDup = true;
-    this.http.get(`/api/Pages/${encodeURIComponent(key)}`, { observe: 'response' })
+    this.http.get(`https://idoskor.onrender.com/api/Pages/${encodeURIComponent(key)}`, { observe: 'response' })
       .pipe(
         map(() => true),
         catchError(err => of(err?.status === 404 ? false : true))
@@ -219,7 +219,7 @@ export class AdminPagesListComponent {
     }
 
     const body = { title: title ?? '', content: '' };
-    this.http.put<void>(`/api/Pages/${encodeURIComponent(key)}`, body).subscribe({
+    this.http.put<void>(`https://idoskor.onrender.com/api/Pages/${encodeURIComponent(key)}`, body).subscribe({
       next: () => {
         this.snack.open('Cikk létrehozva ✅', 'Modális szerkesztés', { duration: 2500 })
           .onAction().subscribe(() => this.editModal(key));
@@ -235,7 +235,7 @@ export class AdminPagesListComponent {
     if (!p?.key) return;
     if (!confirm(`Biztosan törlöd ezt a cikket?\n\n${p.title} (${p.key})`)) return;
 
-    this.http.delete(`/api/Pages/${encodeURIComponent(p.key)}`).subscribe({
+    this.http.delete(`https://idoskor.onrender.com/api/Pages/${encodeURIComponent(p.key)}`).subscribe({
       next: () => {
         this.pages = this.pages.filter(x => x !== p);
         this.snack.open('Oldal törölve.', undefined, { duration: 1500 });
