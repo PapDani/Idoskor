@@ -16,13 +16,14 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// CORS
+// CORS – alapból engedi a Render frontend + aktividoskor domain-t
 var defaultAllowedOrigins = new[]
 {
     "https://idoskor-1-frontend.onrender.com",
     "https://www.aktividoskor.hu",
     "https://aktividoskor.hu"
 };
+
 var allowedOriginsEnv = builder.Configuration["ALLOWED_ORIGINS"];
 var allowedOrigins = string.IsNullOrWhiteSpace(allowedOriginsEnv)
     ? defaultAllowedOrigins
@@ -50,11 +51,11 @@ if (dbProvider == "sqlite")
 }
 else
 {
-    // SQL Server fallback
     var conn =
         builder.Configuration.GetConnectionString("Default")
         ?? builder.Configuration["SQLSERVER_CONNECTION_STRING"]
         ?? "Server=.;Database=Idoskor;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
+
     builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(conn));
 }
 
@@ -95,7 +96,7 @@ app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// /uploads statikus fájlok (fizikai mappa -> /uploads)
+// /uploads statikus fájlok
 {
     var dataRoot = builder.Configuration["Data:Root"]
                   ?? builder.Configuration["DATA_ROOT"]
@@ -113,80 +114,13 @@ app.UseAuthorization();
 // ---------- Controllers ----------
 app.MapControllers();
 
-var auth = app.MapGroup("/api/auth");
+// ---------- Minimal API diagnosztika + auth ----------
 
-auth.MapGet("/login-test", () => Results.Json(new { ok = true, path = "/api/auth/login-test", ts = DateTime.UtcNow }));
+// Egyszerû ping – ezt már tesztelted
+app.MapGet("/api/ping", () =>
+    Results.Json(new { ok = true, src = "api", ts = DateTime.UtcNow }));
 
-// Diagnosztika (GET)
-auth.MapGet("/diag", (IConfiguration cfg) =>
-{
-    var data = new
-    {
-        AspNetEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-        AdminUser_Username_Configured = !string.IsNullOrWhiteSpace(cfg["AdminUser:Username"]),
-        AdminUser_Password_Configured = !string.IsNullOrWhiteSpace(cfg["AdminUser:Password"]),
-        Jwt_Key_Length = (cfg["Jwt:Key"] ?? "").Length,
-        Jwt_Issuer = cfg["Jwt:Issuer"] ?? "(null)",
-        Jwt_Audience = cfg["Jwt:Audience"] ?? "(null)",
-        Utc = DateTime.UtcNow
-    };
-    return Results.Json(data);
-});
-
-// Login (POST) – ENV alapú admin + JWT
-auth.MapPost("/login", (IConfiguration cfg, [FromBody] LoginRequest body) =>
-{
-    if (body is null) return Results.BadRequest(new { error = "Empty body." });
-
-    var user = cfg["AdminUser:Username"];
-    var pass = cfg["AdminUser:Password"];
-    if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
-        return Results.Problem("Admin credentials are not configured on the server.", statusCode: 500);
-
-    if (!string.Equals(body.Username, user, StringComparison.Ordinal) ||
-        !string.Equals(body.Password, pass, StringComparison.Ordinal))
-        return Results.Unauthorized();
-
-    var key = cfg["Jwt:Key"];
-    if (string.IsNullOrWhiteSpace(key))
-        return Results.Problem("JWT:Key is not configured.", statusCode: 500);
-
-    var issuer = cfg["Jwt:Issuer"] ?? "Idoskor";
-    var audience = cfg["Jwt:Audience"] ?? "IdoskorAdmin";
-    var expires = DateTime.UtcNow.AddHours(12);
-
-    var claims = new[]
-    {
-        new Claim(JwtRegisteredClaimNames.Sub, user),
-        new Claim(ClaimTypes.Name, user),
-        new Claim(ClaimTypes.Role, "Admin"),
-        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-    };
-
-    var creds = new SigningCredentials(
-        new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-        SecurityAlgorithms.HmacSha256
-    );
-
-    var jwt = new JwtSecurityToken(
-        issuer: issuer,
-        audience: audience,
-        claims: claims,
-        notBefore: DateTime.UtcNow,
-        expires: expires,
-        signingCredentials: creds
-    );
-
-    var token = new JwtSecurityTokenHandler().WriteToken(jwt);
-    return Results.Json(new { token, expiresAt = expires });
-});
-
-// ---------- Minimal API diagnosztika és login ----------
-
-// Egyszerû ping
-app.MapGet("/api/ping", () => Results.Json(new { ok = true, src = "api", ts = DateTime.UtcNow }));
-
-// Diagnosztika – ENV-ek
+// Diagnosztika ENV-ekre
 app.MapGet("/api/auth/diag", (IConfiguration cfg) =>
 {
     var data = new
@@ -202,10 +136,11 @@ app.MapGet("/api/auth/diag", (IConfiguration cfg) =>
     return Results.Json(data);
 });
 
-// Login – ENV alapú admin, JWT vissza
+// Login – csak ENV admin felhasználó
 app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body) =>
 {
-    if (body is null) return Results.BadRequest(new { error = "Empty body." });
+    if (body is null)
+        return Results.BadRequest(new { error = "Empty body." });
 
     var user = cfg["AdminUser:Username"];
     var pass = cfg["AdminUser:Password"];
@@ -214,7 +149,7 @@ app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body
 
     if (!string.Equals(body.Username, user, StringComparison.Ordinal) ||
         !string.Equals(body.Password, pass, StringComparison.Ordinal))
-        return Results.Unauthorized();
+        return Results.Unauthorized(new { error = "Invalid username or password." });
 
     var key = cfg["Jwt:Key"];
     if (string.IsNullOrWhiteSpace(key))
@@ -261,12 +196,11 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        // Ha már létezik minden, ne álljon meg az app
         Console.WriteLine($"[Startup] Migration/Seed warning: {ex.Message}");
     }
 }
 
 app.Run();
 
-// ---------- Types (top-level statements fölött NE legyen típus!) ----------
+// ---------- Types ----------
 public record LoginRequest(string Username, string Password);

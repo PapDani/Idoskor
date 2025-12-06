@@ -1,18 +1,30 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
+import { API_BASE_URL } from '../api.config';
 
-interface LoginResponse { token: string; }
+export interface LoginResponse {
+  token: string;
+  expiresAt?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly api = '/api/auth';
-  constructor(private http: HttpClient) { }
+  // KÖZVETLENÜL A BACKENDRE MUTAT:
+  // API_BASE_URL pl.: 'https://idoskor.onrender.com/api'
+  private readonly api = `${API_BASE_URL}/auth`;
+
+  constructor(private http: HttpClient) {}
 
   login(username: string, password: string) {
-    return this.http.post<LoginResponse>(`${this.api}/login`, { username, password })
+    return this.http
+      .post<LoginResponse>(`${this.api}/login`, { username, password })
       .pipe(
-        tap(res => localStorage.setItem('jwt', res.token))
+        tap(res => {
+          if (res?.token) {
+            localStorage.setItem('jwt', res.token);
+          }
+        })
       );
   }
 
