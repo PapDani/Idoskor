@@ -171,5 +171,23 @@ using (var scope = app.Services.CreateScope())
 // (opcionális) egészségügyi endpoint
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
+//Login teszteléshez
+app.MapGet("/api/ping", () => Results.Json(new { ok = true, src = "api", ts = DateTime.UtcNow }));
+
+app.MapGet("/api/auth/diag2", (IConfiguration cfg) =>
+{
+    var data = new
+    {
+        AspNetEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+        AdminUser_Username_Configured = !string.IsNullOrWhiteSpace(cfg["AdminUser:Username"]),
+        AdminUser_Password_Configured = !string.IsNullOrWhiteSpace(cfg["AdminUser:Password"]),
+        Jwt_Key_Length = (cfg["Jwt:Key"] ?? "").Length,
+        Jwt_Issuer = cfg["Jwt:Issuer"] ?? "(null)",
+        Jwt_Audience = cfg["Jwt:Audience"] ?? "(null)",
+        Utc = DateTime.UtcNow
+    };
+    return Results.Json(data);
+});
+
 app.MapControllers();
 app.Run();
