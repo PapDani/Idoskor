@@ -15,6 +15,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 
 var allowedOrigins = new[]
 {
@@ -188,6 +192,55 @@ app.MapGet("/api/auth/diag2", (IConfiguration cfg) =>
     };
     return Results.Json(data);
 });
+
+app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body) =>
+{
+    if (body is null) return Results.BadRequest(new { error = "Empty body." });
+
+    var user = cfg["AdminUser:Username"];
+    var pass = cfg["AdminUser:Password"];
+    if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
+        return Results.Problem("Admin credentials are not configured on the server.", statusCode: 500);
+
+    if (!string.Equals(body.Username, user, StringComparison.Ordinal) ||
+        !string.Equals(body.Password, pass, StringComparison.Ordinal))
+        return Results.Unauthorized();
+
+    var key = cfg["Jwt:Key"];
+    if (string.IsNullOrWhiteSpace(key))
+        return Results.Problem("JWT:Key is not configured.", statusCode: 500);
+
+    var issuer = cfg["Jwt:Issuer"] ?? "Idoskor";
+    var audience = cfg["Jwt:Audience"] ?? "IdoskorAdmin";
+    var expires = DateTime.UtcNow.AddHours(12);
+
+    var claims = new[]
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user),
+        new Claim(ClaimTypes.Name, user),
+        new Claim(ClaimTypes.Role, "Admin"),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
+
+    var creds = new SigningCredentials(
+        new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+        SecurityAlgorithms.HmacSha256
+    );
+
+    var jwt = new JwtSecurityToken(
+        issuer: issuer,
+        audience: audience,
+        claims: claims,
+        notBefore: DateTime.UtcNow,
+        expires: expires,
+        signingCredentials: creds
+    );
+
+    var token = new JwtSecurityTokenHandler().WriteToken(jwt);
+    return Results.Json(new { token, expiresAt = expires });
+});
+
+public record LoginRequest(string Username, string Password);
 
 app.MapControllers();
 app.Run();
