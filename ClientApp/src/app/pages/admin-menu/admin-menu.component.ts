@@ -149,7 +149,7 @@ export class AdminMenuComponent {
     this.menu.tree$.subscribe(t => this.tree = t ?? []);
     this.menu.load();
 
-    this.http.get<PageOption[]>('/api/Pages')
+    this.http.get<PageOption[]>('https://idoskor.onrender.com/api/Pages')
       .subscribe(list => this.pages = list.map(p => ({ key: (p as any).key, title: (p as any).title || (p as any).key })));
   }
 

@@ -28,7 +28,7 @@ export class AdminCardsComponent {
 
   ngOnInit(): void {
     this.reload();
-    this.http.get<PageOption[]>('/api/Pages').subscribe(list => {
+    this.http.get<PageOption[]>('https://idoskor.onrender.com/api/Pages').subscribe(list => {
       this.pages = list.map(p => ({ key: (p as any).key, title: (p as any).title || (p as any).key }));
     });
   }
