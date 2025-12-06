@@ -21,3 +21,6 @@ ClientApp/.angular/
 
 # Lokális környezetek
 **/appsettings.Development.json
+
+/Api/wwwroot/uploads/*
+!/Api/wwwroot/uploads/.gitkeep
