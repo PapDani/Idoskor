@@ -93,6 +93,7 @@ namespace Api.Controllers
 
         // Gyors diagnosztika: ellenõrzi, hogy az ENV-ek be vannak-e állítva a BACKEND service-en
         [HttpGet("diag")]
+        [HttpGet("/api/auth/diag")]
         [AllowAnonymous]
         public IActionResult Diag()
         {
