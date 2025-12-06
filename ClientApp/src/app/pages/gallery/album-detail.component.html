@@ -1,6 +1,15 @@
 <div *ngIf="loading" class="p-4">Betöltés…</div>
 
 <div *ngIf="!loading && album">
+  <!-- 1) Vissza gomb -->
+  <div class="topbar">
+    <button mat-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Vissza a galériához
+    </button>
+    <div class="spacer"></div>
+  </div>
+
   <h2 class="mb-3">{{ album.title }}</h2>
   <p class="mb-4" *ngIf="album.description">{{ album.description }}</p>
 

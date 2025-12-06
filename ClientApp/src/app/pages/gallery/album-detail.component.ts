@@ -1,8 +1,10 @@
 import { Component, OnInit, inject, AfterViewInit, Directive, ElementRef, HostBinding, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { PhotoViewerDialogComponent } from './photo-viewer-dialog.component';
 
 /* --- Lazy blur direktíva --- */
@@ -55,8 +57,13 @@ function buildSrcsetFromVariant(url: string): string {
   selector: 'app-album-detail',
   standalone: true,
   templateUrl: './album-detail.component.html',
-  // mini stílus + egyszerű "masonry"
   styles: [`
+    .topbar {
+      display: flex; align-items: center; gap: 8px;
+      margin: 8px 0 16px;
+    }
+    .topbar .spacer { flex: 1; }
+
     img[lazyBlur] {
       filter: blur(12px);
       transform: scale(1.02);
@@ -72,12 +79,20 @@ function buildSrcsetFromVariant(url: string): string {
     .item { break-inside: avoid; margin: 0 0 12px; }
     .item img { width: 100%; display: block; border-radius: 8px; cursor: zoom-in; }
   `],
-  imports: [CommonModule, RouterModule, HttpClientModule, LazyBlurDirectiveDetail, MatDialogModule],
+  imports: [
+    CommonModule,
+    RouterModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    LazyBlurDirectiveDetail
+  ],
 })
 export class AlbumDetailComponent implements OnInit {
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
   private dialog = inject(MatDialog);
+  private router = inject(Router);
 
   album: any = null;
   photos: any[] = [];
@@ -99,7 +114,13 @@ export class AlbumDetailComponent implements OnInit {
     });
   }
 
-  // -- ezekre hivatkozik a template --
+  /** 1) Vissza gomb működése */
+  goBack(): void {
+    // Ha van böngészői előzmény, ugrunk vissza; ha nincs (pl. deep link), megyünk a galériába.
+    if (window.history.length > 1) window.history.back();
+    else this.router.navigate(['/gallery']);
+  }
+
   photoUrl(p: any): string {
     const url = normalizeUploadUrl(p?.imageUrl || '');
     return url ? preferBestDefault(url) : this.placeholder;
@@ -108,6 +129,7 @@ export class AlbumDetailComponent implements OnInit {
     const url = normalizeUploadUrl(p?.imageUrl || '');
     return url ? buildSrcsetFromVariant(url) : '';
   }
+
   openLightbox(p: any) {
     const idx = Math.max(0, this.photos.findIndex(x => x === p || x?.id === p?.id));
     this.dialog.open(PhotoViewerDialogComponent, {
