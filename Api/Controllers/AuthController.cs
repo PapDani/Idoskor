@@ -21,13 +21,16 @@ namespace Api.Controllers
         public IActionResult Login([FromBody] LoginRequest req)
         {
             // 1) Ellenõrzés a statikus admin felhasználóval
-            var admin = _config.GetSection("AdminUser");
-            if (req.Username != admin["Username"] || req.Password != admin["Password"])
+            //var admin = _config.GetSection("AdminUser");
+
+            var u = _config["AdminUsername"];
+            var p = _config["AdminPassword"];
+            if (!string.Equals(req.Username, u, StringComparison.Ordinal) ||
+            !string.Equals(req.Password, p, StringComparison.Ordinal))
                 return Unauthorized();
 
             // 2) Token generálás
-            var jwt = _config.GetSection("Jwt");
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt_key"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
