@@ -1,34 +1,24 @@
 <div class="card-container">
-  <mat-card class="example-card cursor-pointer"
+  <mat-card class="news-card"
             *ngFor="let c of cards"
-            (click)="goDetail(c.id!)">
+            (click)="goDetail(c)">
+
     <img mat-card-image
-         [src]="c.imageUrl"
-         [alt]="c.title"
-         class="example-header-image" />
+         [src]="resolveImage(c.imageUrl)"
+         [alt]="c.title ?? 'Kép'"
+         (error)="onImgError($event)">
+
     <mat-card-header>
       <mat-card-title>{{ c.title }}</mat-card-title>
+
+      <mat-card-subtitle *ngIf="subtitleOf(c) as sub">
+        <a *ngIf="isExternalLink(sub)"
+           [href]="sub" target="_blank" rel="noopener"
+           (click)="onSubtitleLinkClick($event)">{{ sub }}</a>
+        <span *ngIf="!isExternalLink(sub)">{{ sub }}</span>
+      </mat-card-subtitle>
     </mat-card-header>
-    <mat-card-content>
-      <p>{{ c.contentUrl }}</p>
-    </mat-card-content>
+
+    <mat-card-content></mat-card-content>
   </mat-card>
 </div>
-
-
-<!--Tailwind, works-->
-<!--
-<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-  <mat-card *ngFor="let c of cards"
-            class="cursor-pointer"
-            (click)="goDetail(c.id!)">
-    <img mat-card-image [src]="c.imageUrl" [alt]="c.title" />
-    <mat-card-header>
-      <mat-card-title>{{ c.title }}</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <p>{{ c.contentUrl }}</p>
-    </mat-card-content>
-  </mat-card>
-</div>
-  -->

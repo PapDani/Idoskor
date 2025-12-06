@@ -2,27 +2,27 @@
   <button mat-button
           color="accent"
           (click)="goBack()">
-    ← Home
+    ← Vissza
   </button>
 
   <mat-card class="max-w-sm mx-auto p-6">
-    <h2 mat-card-title>Admin Login</h2>
+    <h2 mat-card-title>Admin bejelentkezés</h2>
     <mat-card-content>
       <form #loginForm="ngForm" (ngSubmit)="onSubmit()">
         <mat-form-field appearance="fill" class="w-full mb-4">
-          <mat-label>Username</mat-label>
+          <mat-label>Felhasználónév</mat-label>
           <input matInput
             name="username"
             [(ngModel)]="username"
             #usernameCtrl="ngModel"
             required>
           <mat-error *ngIf="usernameCtrl.invalid && usernameCtrl.touched">
-            Username is required
+            Felhasználónév kötelező
           </mat-error>
         </mat-form-field>
 
         <mat-form-field appearance="fill" class="w-full mb-4">
-          <mat-label>Password</mat-label>
+          <mat-label>Jelszó</mat-label>
           <input matInput
             type="password"
             name="password"
@@ -30,7 +30,7 @@
             #passwordCtrl="ngModel"
             required>
           <mat-error *ngIf="passwordCtrl.invalid && passwordCtrl.touched">
-            Password is required
+            Jelszó kötelező
           </mat-error>
         </mat-form-field>
 
@@ -38,7 +38,7 @@
           <button mat-raised-button
                   color="primary"
                   [disabled]="loginForm.invalid">
-            Login
+            Bejelentkezés
           </button>
         </div>
       </form>
