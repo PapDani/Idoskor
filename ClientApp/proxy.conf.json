@@ -1,7 +1,8 @@
 {
   "/api": {
     "target": "http://127.0.0.1:5125",
-    "secure": false
+    "secure": false,
+    "changeOrigin": true
   },
   "/images": {
     "target": "http://127.0.0.1:5125",

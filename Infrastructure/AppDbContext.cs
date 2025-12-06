@@ -28,5 +28,34 @@ namespace Infrastructure
 
             b.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         }
+
+        public override int SaveChanges()
+        {
+            SetCreatedUtcForAddedEntities();
+            return base.SaveChanges();
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            SetCreatedUtcForAddedEntities();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void SetCreatedUtcForAddedEntities()
+        {
+            // Ha több entitásodban is van CreatedUtc, ide felveheted őket.
+            foreach (var e in ChangeTracker.Entries())
+            {
+                if (e.State == EntityState.Added)
+                {
+                    var prop = e.Properties.FirstOrDefault(p =>
+                        string.Equals(p.Metadata.Name, "CreatedUtc", StringComparison.OrdinalIgnoreCase));
+                    if (prop is { CurrentValue: null } or { CurrentValue: DateTime dt and { Year: 1 } })
+                    {
+                        prop.CurrentValue = DateTime.UtcNow;
+                    }
+                }
+            }
+        }
     }
 }
