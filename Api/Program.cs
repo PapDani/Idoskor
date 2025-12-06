@@ -98,6 +98,13 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+var keysPath = Path.Combine(dataRoot, "keys");
+Directory.CreateDirectory(keysPath);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+    .SetApplicationName("Idoskor");
+
 var app = builder.Build();
 
 // -------------------------------------------------
@@ -142,6 +149,8 @@ using (var scope = app.Services.CreateScope())
 
     await DbSeeder.SeedAsync(db);      // itt már ne legyen Migrate()
 }
+
+using Microsoft.AspNetCore.DataProtection;
 
 // (opcionális) egészségügyi endpoint
 app.MapGet("/healthz", () => Results.Ok("ok"));
