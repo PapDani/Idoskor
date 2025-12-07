@@ -1,32 +1,40 @@
-import { Injectable, inject } from '@angular/core';
+// src/app/core/uploads.service.ts
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
-//import { API_BASE_URL } from '../api.config';
+import { Observable } from 'rxjs';
+//import { API_BASE_URL } from './api-config';
 
-export interface ImageVariants {
-  original: string;
-  w320: string;
-  w640: string;
-  w1024: string;
-  w1600?: string | null;
+export interface ImageVariantsResponse {
+  original?: string;
+  w1024?: string;
+  w640?: string;
+  // ha a backend mást is visszaad, itt bővíthető
 }
 
 @Injectable({ providedIn: 'root' })
 export class UploadsService {
-  //private readonly baseUrl = `${API_BASE_URL}/Uploads`;
+  // MINDIG az /api/Uploads alatt hívjuk a backendet
   private readonly baseUrl = "/api";
+
   constructor(private http: HttpClient) { }
 
-  // Meglévő – visszafelé kompatibilis
-  uploadImage(file: File) {
+  // Régi, sima kép-feltöltés (ha még használod valahol)
+  uploadImage(file: File): Observable<string | ImageVariantsResponse> {
     const form = new FormData();
     form.append('file', file);
-    return this.http.post(`${this.baseUrl}/image`, form);
+    return this.http.post<string | ImageVariantsResponse>(
+      `${this.baseUrl}/image`,
+      form
+    );
   }
 
-  uploadImageVariants(file: File) {
+  // Új: variánsok (w1024, w640, original, stb.)
+  uploadImageVariants(file: File): Observable<ImageVariantsResponse> {
     const form = new FormData();
     form.append('file', file);
-    return this.http.post(`${this.baseUrl}/image-variants`, form);
+    return this.http.post<ImageVariantsResponse>(
+      `${this.baseUrl}/image-variants`,
+      form
+    );
   }
 }
