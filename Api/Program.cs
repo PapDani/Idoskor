@@ -1,219 +1,221 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Text;
 using Infrastructure;
 using Infrastructure.Seed;
+using Infrastructure.Services;
+using Domain.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------- Services ----------
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// Helper függvény env / config olvasáshoz
+string? GetEnv(string key) =>
+    builder.Configuration[key] ?? Environment.GetEnvironmentVariable(key);
 
-// CORS – alapból engedi a Render frontend + aktividoskor domain-t
-var defaultAllowedOrigins = new[]
+// -------------------- DB_PROVIDER + DATA_ROOT --------------------
+
+// Alapértelmezett: sqlite (Render + lokálra is jó)
+var dbProvider = GetEnv("DB_PROVIDER")?.ToLowerInvariant();
+if (string.IsNullOrWhiteSpace(dbProvider))
 {
-    "https://idoskor-1-frontend.onrender.com",
-    "https://www.aktividoskor.hu",
-    "https://aktividoskor.hu"
-};
+    dbProvider = "sqlite";
+}
 
-var allowedOriginsEnv = builder.Configuration["ALLOWED_ORIGINS"];
-var allowedOrigins = string.IsNullOrWhiteSpace(allowedOriginsEnv)
-    ? defaultAllowedOrigins
-    : allowedOriginsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-builder.Services.AddCors(opt =>
+// DATA_ROOT: Render Disk mount vagy lokál App_Data
+var dataRoot = GetEnv("DATA_ROOT");
+if (string.IsNullOrWhiteSpace(dataRoot))
 {
-    opt.AddDefaultPolicy(p =>
-        p.WithOrigins(
-                "http://localhost:4200",                  // lokális fejlesztés
-                "https://idoskor-1-frontend.onrender.com",// Render frontend
-                "https://idoskor.onrender.com"            // (opcionális) ha innen is lesz valaha UI
-            )
-         .AllowAnyHeader()
-         .AllowAnyMethod()
-    // .AllowCredentials()  // csak akkor kell, ha majd sütivel dolgozol
-    );
+    dataRoot = Path.Combine(builder.Environment.ContentRootPath, "App_Data");
+}
+Directory.CreateDirectory(dataRoot);
+
+// -------------------- DbContext konfiguráció --------------------
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    if (dbProvider == "sqlserver")
+    {
+        var connStr =
+            builder.Configuration.GetConnectionString("DefaultConnection") ??
+            GetEnv("SQLSERVER_CONNECTION") ??
+            throw new InvalidOperationException("No SQL Server connection string configured.");
+
+        options.UseSqlServer(connStr);
+    }
+    else
+    {
+        // Sqlite (default)
+        var dbPath = Path.Combine(dataRoot!, "idoskor.db");
+        var connStr = $"Data Source={dbPath}";
+        options.UseSqlite(connStr);
+    }
 });
 
-// DB provider (Sqlite / SqlServer)
-var dbProvider = (builder.Configuration["DB_PROVIDER"] ?? "Sqlite").Trim().ToLowerInvariant();
+builder.Services.AddScoped<ICardRepository, CardRepository>();
+builder.Services.AddScoped<ICardService, CardService>();
 
-if (dbProvider == "sqlite")
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+
+builder.Services.AddScoped<IPageRepository, PageRepository>();
+builder.Services.AddScoped<IPageService, PageService>();
+
+// -------------------- CORS --------------------
+
+builder.Services.AddCors(options =>
 {
-    var dataRoot = builder.Configuration["Data:Root"]
-                  ?? builder.Configuration["DATA_ROOT"]
-                  ?? "/var/data";
-    Directory.CreateDirectory(dataRoot);
-    var dbPath = Path.Combine(dataRoot, "app.db");
-    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlite($"Data Source={dbPath}"));
-}
-else
+    options.AddPolicy("AllowFrontends", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:4200",                  // lokál Angular
+                "https://idoskor-1-frontend.onrender.com" // Render frontend
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+// -------------------- Controllers --------------------
+
+builder.Services.AddControllers();
+
+// -------------------- Swagger --------------------
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
 {
-    var conn =
-        builder.Configuration.GetConnectionString("Default")
-        ?? builder.Configuration["SQLSERVER_CONNECTION_STRING"]
-        ?? "Server=.;Database=Idoskor;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Idõskor API",
+        Version = "v1"
+    });
 
-    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(conn));
-}
+    // JWT auth a Swagger UI-hoz
+    var jwtScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme."
+    };
 
-// JWT auth
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "";
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Idoskor";
-var jwtAud = builder.Configuration["Jwt:Audience"] ?? "IdoskorAdmin";
+    c.AddSecurityDefinition("Bearer", jwtScheme);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { jwtScheme, Array.Empty<string>() }
+    });
+});
+
+// -------------------- JWT autentikáció --------------------
+
+var jwtKey = GetEnv("JWT__KEY") ?? "ChangeMe_DevOnly_12345678901234567890";
+var jwtIssuer = GetEnv("JWT__ISSUER") ?? "Idoskor";
+var jwtAudience = GetEnv("JWT__AUDIENCE") ?? "IdoskorAdmin";
+
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(opt =>
+    .AddAuthentication(options =>
     {
-        opt.TokenValidationParameters = new TokenValidationParameters
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
         {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = signingKey,
             ValidateIssuer = true,
             ValidIssuer = jwtIssuer,
-            ValidateAudience = true,
-            ValidAudience = jwtAud,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = string.IsNullOrWhiteSpace(jwtKey)
-                ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes("fallback-key-change-me-very-long"))
-                : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateAudience = !string.IsNullOrWhiteSpace(jwtAudience),
+            ValidAudience = string.IsNullOrWhiteSpace(jwtAudience) ? null : jwtAudience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2)
         };
     });
 
-builder.Services.AddAuthorization();
+// -------------------- Saját szolgáltatások --------------------
+
+// Itt csak olyat regisztrálunk, amirõl biztosan tudjuk, hogy létezik.
+builder.Services.AddScoped<ICardService, CardService>();
+
+// Ha van külön ImageVariantService és interface, azt késõbb visszatehetjük,
+// de most direkt NEM hivatkozunk IImageVariantService-re, hogy leforduljon.
+
+// -------------------- App build --------------------
 
 var app = builder.Build();
 
-// ---------- Middleware ----------
-app.UseCors("AppCors");
+// -------------------- Middleware pipeline --------------------
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
+// Swagger – most mindig elérhetõ
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Idõskor API v1");
+    c.RoutePrefix = "";
+});
 
+// CORS – fontos: MapControllers elõtt
+app.UseCors("AllowFrontends");
+
+// Auth
 app.UseAuthentication();
 app.UseAuthorization();
 
-// /uploads statikus fájlok
-{
-    var dataRoot = builder.Configuration["Data:Root"]
-                  ?? builder.Configuration["DATA_ROOT"]
-                  ?? "/var/data";
-    var uploadsPath = Path.Combine(dataRoot, "uploads");
-    Directory.CreateDirectory(uploadsPath);
+// -------------------- Adatbázis inicializálás --------------------
 
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new PhysicalFileProvider(uploadsPath),
-        RequestPath = "/uploads"
-    });
-}
-
-// ---------- Controllers ----------
-app.MapControllers();
-
-// ---------- Minimal API diagnosztika + auth ----------
-
-// Egyszerû ping
-app.MapGet("/api/ping", () =>
-    Results.Json(new { ok = true, src = "api", ts = DateTime.UtcNow }));
-
-// Diagnosztika ENV-ekre
-app.MapGet("/api/auth/diag", (IConfiguration cfg) =>
-{
-    var data = new
-    {
-        AspNetEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-        AdminUser_Username_Configured = !string.IsNullOrWhiteSpace(cfg["AdminUser:Username"]),
-        AdminUser_Password_Configured = !string.IsNullOrWhiteSpace(cfg["AdminUser:Password"]),
-        Jwt_Key_Length = (cfg["Jwt:Key"] ?? "").Length,
-        Jwt_Issuer = cfg["Jwt:Issuer"] ?? "(null)",
-        Jwt_Audience = cfg["Jwt:Audience"] ?? "(null)",
-        Utc = DateTime.UtcNow
-    };
-    return Results.Json(data);
-});
-
-// Login – ENV alapú admin felhasználó
-app.MapPost("/api/auth/login", (IConfiguration cfg, [FromBody] LoginRequest body) =>
-{
-    if (body is null)
-        return Results.BadRequest(new { error = "Empty body." });
-
-    var user = cfg["AdminUser:Username"];
-    var pass = cfg["AdminUser:Password"];
-    if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
-        return Results.Problem("Admin credentials are not configured on the server.", statusCode: 500);
-
-    if (!string.Equals(body.Username, user, StringComparison.Ordinal) ||
-        !string.Equals(body.Password, pass, StringComparison.Ordinal))
-    {
-        // Itt nem hívunk Results.Unauthorized(body)-t, mert nincs ilyen overload,
-        // hanem explicit 401-es JSON választ adunk:
-        return Results.Json(
-            new { error = "Invalid username or password." },
-            statusCode: 401
-        );
-    }
-
-    var key = cfg["Jwt:Key"];
-    if (string.IsNullOrWhiteSpace(key))
-        return Results.Problem("JWT:Key is not configured.", statusCode: 500);
-
-    var issuer = cfg["Jwt:Issuer"] ?? "Idoskor";
-    var audience = cfg["Jwt:Audience"] ?? "IdoskorAdmin";
-    var expires = DateTime.UtcNow.AddHours(12);
-
-    var claims = new[]
-    {
-        new Claim(JwtRegisteredClaimNames.Sub, user),
-        new Claim(ClaimTypes.Name, user),
-        new Claim(ClaimTypes.Role, "Admin"),
-        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-    };
-
-    var creds = new SigningCredentials(
-        new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-        SecurityAlgorithms.HmacSha256
-    );
-
-    var jwt = new JwtSecurityToken(
-        issuer: issuer,
-        audience: audience,
-        claims: claims,
-        notBefore: DateTime.UtcNow,
-        expires: expires,
-        signingCredentials: creds
-    );
-
-    var token = new JwtSecurityTokenHandler().WriteToken(jwt);
-    return Results.Json(new { token, expiresAt = expires });
-});
-
-// ---------- Migráció + seed ----------
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
+
+    if (db.Database.IsSqlite())
     {
-        await db.Database.MigrateAsync();
-        await DbSeeder.SeedAsync(db);
+        // Sqlite: séma létrehozása modell alapján
+        db.Database.EnsureCreated();
     }
-    catch (Exception ex)
+    else
     {
-        Console.WriteLine($"[Startup] Migration/Seed warning: {ex.Message}");
+        db.Database.Migrate();
     }
+
+    await DbSeeder.SeedAsync(db);
 }
 
-app.Run();
+// -------------------- Feltöltött képek (uploads) kiszolgálása --------------------
 
-// ---------- Types ----------
-public record LoginRequest(string Username, string Password);
+var uploadsPhysical = Path.Combine(dataRoot!, "uploads");
+Directory.CreateDirectory(uploadsPhysical);
+
+// .webp MIME-type fix (kártyák képei miatt)
+var provider = new FileExtensionContentTypeProvider();
+provider.Mappings[".webp"] = "image/webp";
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPhysical),
+    RequestPath = "/uploads",
+    ContentTypeProvider = provider,
+    ServeUnknownFileTypes = true
+});
+
+// -------------------- Végpontok --------------------
+
+app.MapControllers();
+
+app.Run();
