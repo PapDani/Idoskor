@@ -37,7 +37,8 @@ export interface AlbumDetail {
 
 @Injectable({ providedIn: 'root' })
 export class GalleryService {
-  private readonly baseUrl = `${API_BASE_URL}/Albums`;
+  //private readonly baseUrl = `${API_BASE_URL}/Albums`;
+  private readonly baseUrl = "/api";
 
   constructor(private http: HttpClient) { }
 

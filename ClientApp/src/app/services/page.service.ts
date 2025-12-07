@@ -12,7 +12,8 @@ export interface PageDto {
 
 @Injectable({ providedIn: 'root' })
 export class PagesService {
-  private readonly baseUrl = `${API_BASE_URL}/Pages`;
+  //private readonly baseUrl = `${API_BASE_URL}/Pages`;
+  private readonly baseUrl = "/api";
   constructor(private http: HttpClient) { }
 
   list(): Observable<PageDto[]> {

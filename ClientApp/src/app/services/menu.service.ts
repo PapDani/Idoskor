@@ -29,7 +29,8 @@ export interface ReorderItem { id: number; parentId?: number | null; order: numb
 
 @Injectable({ providedIn: 'root' })
 export class MenuService {
-  private readonly baseUrl = `${API_BASE_URL}/Menu`;
+  //private readonly baseUrl = `${API_BASE_URL}/Menu`;
+  private readonly baseUrl = "/api";
   constructor(private http: HttpClient) { }
 
   private _tree$ = new BehaviorSubject<MenuNode[]>([]);

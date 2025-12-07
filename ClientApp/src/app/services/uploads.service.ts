@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { API_BASE_URL } from '../api.config';
+//import { API_BASE_URL } from '../api.config';
 
 export interface ImageVariants {
   original: string;
@@ -13,7 +13,8 @@ export interface ImageVariants {
 
 @Injectable({ providedIn: 'root' })
 export class UploadsService {
-  private readonly baseUrl = `${API_BASE_URL}/Uploads`;
+  //private readonly baseUrl = `${API_BASE_URL}/Uploads`;
+  private readonly baseUrl = "/api";
   constructor(private http: HttpClient) { }
 
   // Meglévő – visszafelé kompatibilis

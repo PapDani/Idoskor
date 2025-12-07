@@ -20,7 +20,8 @@ export interface UpsertCardDto {
 
 @Injectable({ providedIn: 'root' })
 export class CardService {
-  private readonly baseUrl = `${API_BASE_URL}/Cards`;
+  //private readonly baseUrl = `${API_BASE_URL}/Cards`;
+  private readonly baseUrl = "/api";
 
   constructor(private http: HttpClient) { }
 

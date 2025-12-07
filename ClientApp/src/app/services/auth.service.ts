@@ -12,7 +12,8 @@ export interface LoginResponse {
 export class AuthService {
   // KÖZVETLENÜL A BACKENDRE MUTAT:
   // API_BASE_URL pl.: 'https://idoskor.onrender.com/api'
-  private readonly api = `${API_BASE_URL}/auth`;
+  //private readonly api = `${API_BASE_URL}/auth`;
+  private readonly api = "/api";
 
   constructor(private http: HttpClient) {}
 
